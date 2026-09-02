@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>剪貼簿</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="剪貼簿">
+<meta name="theme-color" content="#F6F4EF">
+<style>
+  :root {
+    --paper: #F6F4EF;
+    --paper-line: #E4E0D6;
+    --ink: #23241F;
+    --ink-soft: #6E6C63;
+    --badge: #2F4B3C;
+    --badge-text: #F6F4EF;
+    --accent: #B8722C;
+    --danger: #A6432E;
+    --card: #FFFFFF;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--paper-line);
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 100px;
+  }
+
+  .row {
+    display: flex;
+    align-items: stretch;
+    background: var(--card);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    border: 1px solid var(--paper-line);
+    overflow: hidden;
+    transition: box-shadow 0.15s ease;
+  }
+
+  .row.copied {
+    box-shadow: 0 0 0 2px var(--badge);
+  }
+
+  .num {
+    flex: 0 0 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--badge);
+    color: var(--badge-text);
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+  }
+
+  .num:active {
+    background: #24382D;
+  }
+
+  .num .check {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  .row.copied .num .check {
+    opacity: 1;
+  }
+
+  .content-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    position: relative;
+  }
+
+  .content-text {
+    flex: 1;
+    font-size: 15.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    color: var(--ink);
+  }
+
+  .content-text.empty {
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  .content-edit {
+    flex: 1;
+    font-size: 15.5px;
+    line-height: 1.5;
+    font-family: inherit;
+    color: var(--ink);
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    padding: 0;
+    min-height: 24px;
+  }
+
+  .del-btn {
+    flex: 0 0 auto;
+    margin-left: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--paper);
+    color: var(--danger);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .row.editing .del-btn {
+    display: flex;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--ink-soft);
+    padding: 60px 20px;
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+
+  .fab {
+    position: fixed;
+    right: 20px;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fab:active {
+    transform: scale(0.94);
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 90px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 9px 18px;
+    border-radius: 20px;
+    font-size: 13.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>剪貼簿</h1>
+  <p>點編號複製・點內容編輯</p>
+</header>
+
+<main id="list">
+  <div class="loading">載入中…</div>
+</main>
+
+<button class="fab" id="addBtn" aria-label="新增">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'clipboard-items';
+  const listEl = document.getElementById('list');
+  const addBtn = document.getElementById('addBtn');
+  const toastEl = document.getElementById('toast');
+
+  let items = [];
+  let editingId = null;
+  let toastTimer = null;
+
+  function uid() {
+    return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+  }
+
+  function loadItems() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        items = JSON.parse(raw);
+      } else {
+        items = [
+          { id: uid(), text: '歡迎使用剪貼簿！點這則文字可以編輯，點左邊的編號可以複製整段內容。' },
+          { id: uid(), text: '在這裡貼上常用的地址、Wi-Fi 密碼、開場白，或任何你常常要複製的文字。' }
+        ];
+        saveItems();
+      }
+    } catch (e) {
+      items = [];
+    }
+    render();
+  }
+
+  function saveItems() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      showToast('儲存失敗，請再試一次');
+    }
+  }
+
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function render() {
+    if (items.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">還沒有內容<br>點右下角的「＋」新增第一則</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    items.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.dataset.id = item.id;
+      if (editingId === item.id) row.classList.add('editing');
+
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.innerHTML = `<span class="label">${idx + 1}</span><span class="check">✓</span>`;
+      num.addEventListener('click', async () => {
+        if (!item.text) {
+          showToast('內容是空的');
+          return;
+        }
+        const ok = await copyText(item.text);
+        if (ok) {
+          row.classList.add('copied');
+          showToast('已複製第 ' + (idx + 1) + ' 則');
+          setTimeout(() => row.classList.remove('copied'), 700);
+        } else {
+          showToast('複製失敗');
+        }
+      });
+
+      const wrap = document.createElement('div');
+      wrap.className = 'content-wrap';
+
+      if (editingId === item.id) {
+        const textarea = document.createElement('textarea');
+        textarea.className = 'content-edit';
+        textarea.value = item.text;
+        textarea.rows = 1;
+
+        const autoGrow = () => {
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+        };
+
+        textarea.addEventListener('input', () => {
+          item.text = textarea.value;
+          autoGrow();
+        });
+
+        textarea.addEventListener('blur', async () => {
+          editingId = null;
+          await saveItems();
+          render();
+        });
+
+        wrap.appendChild(textarea);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del-btn';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('mousedown', (e) => e.preventDefault());
+        delBtn.addEventListener('click', async () => {
+          items = items.filter(i => i.id !== item.id);
+          editingId = null;
+          await saveItems();
+          render();
+        });
+        wrap.appendChild(delBtn);
+
+        row.appendChild(num);
+        row.appendChild(wrap);
+        listEl.appendChild(row);
+
+        setTimeout(() => {
+          textarea.focus();
+          autoGrow();
+          const val = textarea.value;
+          textarea.setSelectionRange(val.length, val.length);
+        }, 0);
+      } else {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'content-text' + (item.text ? '' : ' empty');
+        textDiv.textContent = item.text || '（點此輸入內容）';
+        textDiv.addEventListener('click', () => {
+          editingId = item.id;
+          render();
+        });
+        wrap.appendChild(textDiv);
+
+        row.appendChild(num);
+        row.appendChild(wrap);
+        listEl.appendChild(row);
+      }
+    });
+  }
+
+  addBtn.addEventListener('click', async () => {
+    const newItem = { id: uid(), text: '' };
+    items.push(newItem);
+    editingId = newItem.id;
+    await saveItems();
+    render();
+    setTimeout(() => {
+      listEl.scrollTop = listEl.scrollHeight;
+    }, 50);
+  });
+
+  loadItems();
+})();
+</script>
+
+</body>
+</html>
