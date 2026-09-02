@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>倒數計時器</title>
+<style>
+  :root {
+    --ink: #14201E;
+    --panel: #1B2C29;
+    --paper: #F4EFE6;
+    --ember: #E4653A;
+    --ember-dim: #A8451F;
+    --mist: #9FB3AC;
+    --ok: #5FA88A;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Segoe UI", sans-serif;
+    color: var(--paper);
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .rig {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .label {
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--mist);
+  }
+
+  .picker {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .picker button {
+    flex: 1;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: 1.5px solid rgba(159, 179, 172, 0.3);
+    background: transparent;
+    color: var(--paper);
+    font-size: 17px;
+    font-weight: 600;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+
+  .picker button.active {
+    background: var(--ember);
+    border-color: var(--ember);
+    color: var(--ink);
+  }
+
+  .picker button:disabled {
+    opacity: 0.45;
+  }
+
+  .dial {
+    position: relative;
+    width: min(78vw, 300px);
+    height: min(78vw, 300px);
+    border-radius: 50%;
+    background: var(--panel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1.5px rgba(159, 179, 172, 0.18);
+  }
+
+  .dial svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .dial svg circle {
+    fill: none;
+    stroke-width: 6;
+  }
+
+  .track { stroke: rgba(159, 179, 172, 0.15); }
+
+  .progress {
+    stroke: var(--ember);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+  }
+
+  .progress.done { stroke: var(--ok); }
+
+  .time {
+    font-size: 58px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    z-index: 1;
+  }
+
+  .status {
+    font-size: 14px;
+    color: var(--mist);
+    height: 18px;
+    z-index: 1;
+    margin-top: -32px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .controls button {
+    flex: 1;
+    padding: 16px 0;
+    border-radius: 14px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  #startBtn {
+    background: var(--ember);
+    color: var(--ink);
+  }
+
+  #startBtn:disabled {
+    background: rgba(228, 101, 58, 0.35);
+    color: rgba(20, 32, 30, 0.5);
+  }
+
+  #resetBtn {
+    background: transparent;
+    color: var(--mist);
+    border: 1.5px solid rgba(159, 179, 172, 0.3);
+  }
+
+  .dial.ringing .time { color: var(--ember); animation: pulse 0.9s ease-in-out infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress { transition: none; }
+    .dial.ringing .time { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rig">
+  <div class="label">選擇時間</div>
+
+  <div class="picker">
+    <button id="pick3" class="active">3 分鐘</button>
+    <button id="pick2">2 分鐘</button>
+  </div>
+
+  <div class="dial" id="dial">
+    <svg viewBox="0 0 300 300">
+      <circle class="track" cx="150" cy="150" r="138"></circle>
+      <circle class="progress" id="progressRing" cx="150" cy="150" r="138"></circle>
+    </svg>
+    <div>
+      <div class="time" id="timeDisplay">03:00</div>
+      <div class="status" id="statusText"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">開始</button>
+    <button id="resetBtn">重置</button>
+  </div>
+</div>
+
+<script>
+  const timeDisplay = document.getElementById('timeDisplay');
+  const statusText = document.getElementById('statusText');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const pick3 = document.getElementById('pick3');
+  const pick2 = document.getElementById('pick2');
+  const dial = document.getElementById('dial');
+  const ring = document.getElementById('progressRing');
+
+  const RADIUS = 138;
+  const CIRC = 2 * Math.PI * RADIUS;
+  ring.style.strokeDasharray = CIRC;
+  ring.style.strokeDashoffset = 0;
+
+  let totalSeconds = 180;
+  let remaining = totalSeconds;
+  let timerId = null;
+  let audioCtx = null;
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return m + ':' + sec;
+  }
+
+  function updateDisplay() {
+    timeDisplay.textContent = formatTime(remaining);
+    const fraction = remaining / totalSeconds;
+    ring.style.strokeDashoffset = CIRC * (1 - fraction);
+  }
+
+  function setDuration(minutes, sourceBtn) {
+    if (timerId) return; // 計時中不可切換
+    totalSeconds = minutes * 60;
+    remaining = totalSeconds;
+    [pick3, pick2].forEach(b => b.classList.remove('active'));
+    sourceBtn.classList.add('active');
+    ring.classList.remove('done');
+    dial.classList.remove('ringing');
+    statusText.textContent = '';
+    updateDisplay();
+  }
+
+  pick3.addEventListener('click', () => setDuration(3, pick3));
+  pick2.addEventListener('click', () => setDuration(2, pick2));
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+
+  function beep(times) {
+    ensureAudio();
+    let t = audioCtx.currentTime;
+    for (let i = 0; i < times; i++) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.linearRampToValueAtTime(0, t + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
+      t += 0.5;
+    }
+  }
+
+  function tick() {
+    remaining -= 1;
+    if (remaining <= 0) {
+      remaining = 0;
+      updateDisplay();
+      finish();
+      return;
+    }
+    updateDisplay();
+  }
+
+  function finish() {
+    clearInterval(timerId);
+    timerId = null;
+    ring.classList.add('done');
+    dial.classList.add('ringing');
+    statusText.textContent = '時間到';
+    startBtn.disabled = false;
+    startBtn.textContent = '開始';
+    pick3.disabled = false;
+    pick2.disabled = false;
+    beep(4);
+  }
+
+  function start() {
+    if (timerId) return;
+    ensureAudio();
+    if (remaining <= 0) remaining = totalSeconds;
+    dial.classList.remove('ringing');
+    ring.classList.remove('done');
+    statusText.textContent = '計時中';
+    startBtn.disabled = true;
+    startBtn.textContent = '計時中';
+    pick3.disabled = true;
+    pick2.disabled = true;
+    timerId = setInterval(tick, 1000);
+  }
+
+  function reset() {
+    clearInterval(timerId);
+    timerId = null;
+    remaining = totalSeconds;
+    dial.classList.remove('ringing');
+    ring.classList.remove('done');
+    statusText.textContent = '';
+    startBtn.disabled = false;
+    startBtn.textContent = '開始';
+    pick3.disabled = false;
+    pick2.disabled = false;
+    updateDisplay();
+  }
+
+  startBtn.addEventListener('click', start);
+  resetBtn.addEventListener('click', reset);
+
+  updateDisplay();
+</script>
+
+</body>
+</html>
