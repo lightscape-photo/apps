@@ -100,23 +100,6 @@
     background: #24382D;
   }
 
-  .num .check {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    font-size: 20px;
-    pointer-events: none;
-  }
-
-  .row.copied .num .check {
-    opacity: 1;
-  }
-
   .content-wrap {
     flex: 1;
     min-width: 0;
@@ -332,7 +315,7 @@
 
       const num = document.createElement('div');
       num.className = 'num';
-      num.innerHTML = `<span class="label">${idx + 1}</span><span class="check">✓</span>`;
+      num.innerHTML = `<span class="label">${idx + 1}</span>`;
       num.addEventListener('click', async () => {
         if (!item.text) {
           showToast('內容是空的');
@@ -340,9 +323,11 @@
         }
         const ok = await copyText(item.text);
         if (ok) {
+          row.classList.remove('copied');
+          void row.offsetWidth; // restart animation on rapid re-click
           row.classList.add('copied');
           showToast('已複製第 ' + (idx + 1) + ' 則');
-          setTimeout(() => row.classList.remove('copied'), 700);
+          setTimeout(() => row.classList.remove('copied'), 350);
         } else {
           showToast('複製失敗');
         }
