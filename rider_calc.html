@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1B1F24">
+<meta name="theme-color" content="#FFFFFF">
 <title>外送計價系統</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+TC:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
@@ -22,6 +22,27 @@
     --green-dim:#1C3A2E;
     --red:#FF5C5C;
     --border:#343B44;
+    --brand-uber-color:#fff;
+    --on-green:#0C2A1E;
+    --on-amber:#412402;
+    --on-red:#3A0F0F;
+  }
+  html[data-theme="light"]{
+    --bg:#FFFFFF;
+    --panel:#FFFFFF;
+    --panel-2:#F1F2F4;
+    --text:#1B1F24;
+    --muted:#6B7280;
+    --amber:#92600A;
+    --amber-dim:#FFF3D9;
+    --green:#3B814B;
+    --green-dim:#E4F2E8;
+    --red:#C23A3A;
+    --border:#E1E3E6;
+    --brand-uber-color:#1B1F24;
+    --on-green:#fff;
+    --on-amber:#fff;
+    --on-red:#fff;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -103,7 +124,7 @@
 
   .complete-btn{
     width:100%;padding:10px;border-radius:10px;border:none;background:var(--green);
-    color:#0C2A1E;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
+    color:var(--on-green);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
   }
   .complete-btn:active{transform:scale(0.98);}
 
@@ -167,7 +188,7 @@
     flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
   }
   .settings-actions .cancel{background:transparent;border:1px solid var(--border);color:var(--muted);}
-  .settings-actions .confirm{background:var(--amber);border:none;color:#412402;}
+  .settings-actions .confirm{background:var(--amber);border:none;color:var(--on-amber);}
 
   .clear-all{font-size:12px;color:var(--muted);background:none;border:none;text-decoration:underline;cursor:pointer;}
   .history-actions{display:flex;align-items:center;justify-content:space-between;margin-top:14px;}
@@ -190,7 +211,7 @@
   .tabs{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:18px;}
   .tab-group{display:flex;gap:22px;}
   .brand-label{font-family:'Poppins',sans-serif;font-size:24px;font-weight:500;padding-bottom:5px;letter-spacing:0.2px;}
-  .brand-uber{color:#fff;}
+  .brand-uber{color:var(--brand-uber-color);}
   .brand-eats{color:var(--green);}
   .tab-btn{
     background:none;border:none;border-bottom:2px solid transparent;
@@ -200,6 +221,22 @@
   .tab-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
+
+  .theme-option-row{display:flex;gap:12px;}
+  .theme-option{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:16px 10px;cursor:pointer;font-family:inherit;
+  }
+  .theme-option.active{border:2px solid var(--amber);}
+  .theme-swatch{
+    width:100%;height:48px;border-radius:8px;border:1px solid var(--border);
+    display:block;
+  }
+  .theme-swatch-dark{background:#1B1F24;}
+  .theme-swatch-light{background:#FFFFFF;}
+  .theme-option-label{font-size:13px;color:var(--text);font-weight:600;text-align:center;line-height:1.5;}
+  .theme-option-sub{font-size:11px;color:var(--muted);font-weight:400;}
 </style>
 </head>
 <body>
@@ -208,6 +245,7 @@
     <div class="tab-group">
       <button class="tab-btn active" data-tab="main">主頁</button>
       <button class="tab-btn" data-tab="detail">明細</button>
+      <button class="tab-btn" data-tab="settings">設定</button>
     </div>
     <span class="brand-label"><span class="brand-uber">Uber</span> <span class="brand-eats">Eats</span></span>
   </div>
@@ -260,6 +298,22 @@
       <button class="clear-all" id="clearAllBtn" style="display:none;">清空所有紀錄</button>
     </div>
   </div>
+
+  <div id="tabSettings" class="tab-panel">
+    <div class="active-header">
+      <h2>主題色</h2>
+    </div>
+    <div class="theme-option-row">
+      <button class="theme-option" data-theme-choice="dark">
+        <span class="theme-swatch theme-swatch-dark"></span>
+        <span class="theme-option-label">深色主題<br><span class="theme-option-sub">預設</span></span>
+      </button>
+      <button class="theme-option" data-theme-choice="light">
+        <span class="theme-swatch theme-swatch-light"></span>
+        <span class="theme-option-label">白色主題</span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="confirmClearOverlay">
@@ -268,7 +322,7 @@
     <p class="hint" style="margin-bottom:18px;">這會刪除全部歷史紀錄，且無法復原。建議先用「下載 CSV」備份。</p>
     <div class="settings-actions">
       <button class="cancel" id="confirmClearCancel">取消</button>
-      <button class="confirm" id="confirmClearOk" style="background:var(--red);color:#3A0F0F;">確定清空</button>
+      <button class="confirm" id="confirmClearOk" style="background:var(--red);color:var(--on-red);">確定清空</button>
     </div>
   </div>
 </div>
@@ -335,6 +389,7 @@ function init(){
     }
   });
   if(migrated) saveJSON(KEY_ORDERS, orders);
+  applyTheme(loadJSON(KEY_THEME, 'dark'));
   renderActive();
   computeTodaySummary();
   renderDetailTable();
@@ -501,14 +556,34 @@ $('confirmClearOk').addEventListener('click', ()=>{
   $('confirmClearOverlay').classList.remove('show');
 });
 
+const TAB_ID_MAP = { main: 'tabMain', detail: 'tabDetail', settings: 'tabSettings' };
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const tab = btn.getAttribute('data-tab');
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    $(tab === 'main' ? 'tabMain' : 'tabDetail').classList.add('active');
+    $(TAB_ID_MAP[tab]).classList.add('active');
     if(tab === 'detail') renderDetailTable();
+  });
+});
+
+const KEY_THEME = 'meter_theme';
+function applyTheme(theme){
+  if(theme === 'light'){
+    document.documentElement.setAttribute('data-theme', 'light');
+  }else{
+    document.documentElement.removeAttribute('data-theme');
+  }
+  document.querySelectorAll('.theme-option').forEach(btn=>{
+    btn.classList.toggle('active', btn.getAttribute('data-theme-choice') === theme);
+  });
+}
+document.querySelectorAll('.theme-option').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const theme = btn.getAttribute('data-theme-choice');
+    applyTheme(theme);
+    saveJSON(KEY_THEME, theme);
   });
 });
 
