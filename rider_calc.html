@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B1F24">
+<title>外送計價系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+TC:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1F24;
+    --panel:#23282F;
+    --panel-2:#2C333C;
+    --text:#EDEFF2;
+    --muted:#8A929C;
+    --amber:#FFB020;
+    --amber-dim:#4A3A18;
+    --green:#3DDC97;
+    --green-dim:#1C3A2E;
+    --red:#FF5C5C;
+    --border:#343B44;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans TC',-apple-system,sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .app{width:100%;max-width:480px;padding:20px 16px 60px;}
+  .icon-btn{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    width:38px;height:38px;border-radius:10px;font-size:17px;cursor:pointer;flex-shrink:0;
+  }
+  .icon-btn:active{transform:scale(0.96);}
+
+  .new-order-btn{
+    flex:1;padding:16px 8px;border-radius:16px;border:2px dashed var(--amber);
+    background:transparent;color:var(--amber);font-weight:600;font-size:15px;
+    cursor:pointer;font-family:inherit;
+  }
+  .new-order-btn:active{background:var(--amber-dim);}
+  .new-order-row{display:flex;gap:10px;margin-bottom:18px;}
+  .linked-btn{
+    flex:1;padding:16px 8px;border-radius:16px;border:2px dashed var(--green);
+    background:transparent;color:var(--green);font-weight:600;font-size:15px;
+    cursor:pointer;font-family:inherit;
+  }
+  .linked-btn:active{background:var(--green-dim);}
+  .link-badge{
+    display:inline-block;font-size:11px;font-weight:600;color:var(--green);
+    background:var(--green-dim);border-radius:6px;padding:2px 7px;margin-left:8px;
+  }
+  .locked-price{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+    padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;
+    color:var(--muted);
+  }
+
+  .active-header{display:flex;align-items:center;justify-content:space-between;margin:0 2px 10px;}
+  .active-header h2{font-size:14px;color:var(--muted);font-weight:600;margin:0;}
+  .active-header .count{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);}
+
+  .order-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .order-start{font-size:12px;color:var(--muted);}
+  .order-start b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .cancel-x{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;}
+  .cancel-x:active{color:var(--red);}
+
+  .order-status-row{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);
+  }
+  .order-timer{
+    font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;
+    letter-spacing:0.5px;font-variant-numeric:tabular-nums;flex-shrink:0;
+  }
+  .order-fee{font-size:11px;color:var(--muted);text-align:right;}
+  .order-fee.over{color:var(--amber);}
+
+  .order-base-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .order-base-row label{font-size:12px;color:var(--muted);}
+  .base-input{
+    display:flex;align-items:center;gap:4px;background:var(--panel-2);
+    border:1px solid var(--border);border-radius:8px;padding:4px 8px;
+  }
+  .base-input span{font-size:13px;color:var(--muted);}
+  .base-input input[type=number],.base-input input[type=text]{
+    width:70px;background:transparent;border:none;outline:none;color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:right;
+  }
+  .locked-price{padding:4px 8px;font-size:14px;}
+
+  .complete-btn{
+    width:100%;padding:10px;border-radius:10px;border:none;background:var(--green);
+    color:#0C2A1E;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
+  }
+  .complete-btn:active{transform:scale(0.98);}
+
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
+  .summary .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:12px 10px;
+  }
+  .summary .card .label{font-size:11px;color:var(--muted);line-height:1.4;}
+  .summary .card .value{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;margin-top:4px;}
+
+  .history h2{font-size:14px;color:var(--muted);font-weight:600;margin:0 0 10px 2px;}
+  .order-item{
+    display:flex;align-items:flex-start;gap:10px;
+    padding:12px 4px 12px 12px;border-left:3px solid var(--amber);
+    background:var(--panel);margin-bottom:8px;border-radius:0 10px 10px 0;
+  }
+  .order-item .idx{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);
+    min-width:22px;padding-top:2px;flex-shrink:0;
+  }
+  .order-item .body{flex:1;min-width:0;}
+  .order-item .time-row{font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .order-item .time-row b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .order-item .breakdown-mini{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
+  .order-item .breakdown-mini .pair{font-size:12px;color:var(--muted);}
+  .order-item .breakdown-mini .pair b{
+    display:block;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;
+    color:var(--text);margin-top:2px;
+  }
+  .order-item .breakdown-mini .pair.fee b{color:var(--amber);}
+  .order-item .amt{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-top:1px dashed var(--border);padding-top:6px;margin-top:2px;
+  }
+  .order-item .amt .total-val{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;}
+  .order-item .amt .total-label{font-size:12px;color:var(--muted);}
+  .del-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;}
+  .del-btn:active{color:var(--red);}
+  .empty{font-size:13px;color:var(--muted);text-align:center;padding:20px 0;}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;
+    align-items:center;justify-content:center;z-index:10;padding:20px;
+  }
+  .overlay.show{display:flex;}
+  .settings-panel{
+    width:100%;max-width:380px;background:var(--panel);border:1px solid var(--border);
+    border-radius:16px;padding:20px;
+  }
+  .settings-panel h3{margin:0 0 6px;font-size:16px;}
+  .settings-panel .hint{font-size:12px;color:var(--muted);margin:0 0 16px;line-height:1.6;}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .settings-row label{font-size:13px;color:var(--muted);}
+  .settings-row input[type=number]{
+    width:70px;background:transparent;border:none;outline:none;color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;text-align:right;
+  }
+  .settings-actions{display:flex;gap:10px;margin-top:6px;}
+  .settings-actions button{
+    flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .settings-actions .cancel{background:transparent;border:1px solid var(--border);color:var(--muted);}
+  .settings-actions .confirm{background:var(--amber);border:none;color:#412402;}
+
+  .clear-all{font-size:12px;color:var(--muted);background:none;border:none;text-decoration:underline;cursor:pointer;}
+  .history-actions{display:flex;align-items:center;justify-content:space-between;margin-top:14px;}
+  .export-btn{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    font-size:13px;padding:9px 14px;border-radius:10px;cursor:pointer;font-family:inherit;
+  }
+  .export-btn:active{transform:scale(0.97);}
+  .export-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;}
+  .export-table th,.export-table td{
+    padding:7px 6px;text-align:center;border-bottom:1px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;white-space:nowrap;
+  }
+  .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;text-align:center;}
+  .export-table tbody tr:last-child td{border-bottom:none;}
+  .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
+  .export-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .export-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;}
+
+  .tabs{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:18px;}
+  .tab-group{display:flex;gap:22px;}
+  .brand-label{font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;padding-bottom:5px;letter-spacing:0.2px;}
+  .brand-uber{color:#fff;}
+  .brand-eats{color:var(--green);}
+  .tab-btn{
+    background:none;border:none;border-bottom:2px solid transparent;
+    padding:9px 2px;color:var(--muted);font-weight:600;font-size:15px;
+    cursor:pointer;font-family:inherit;
+  }
+  .tab-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs">
+    <div class="tab-group">
+      <button class="tab-btn active" data-tab="main">主頁</button>
+      <button class="tab-btn" data-tab="detail">明細</button>
+    </div>
+    <span class="brand-label"><span class="brand-uber">Uber</span> <span class="brand-eats">Eats</span></span>
+  </div>
+
+  <div id="tabMain" class="tab-panel active">
+    <div class="new-order-row">
+      <button class="new-order-btn" id="newOrderBtn">＋ 新增一單</button>
+      <button class="linked-btn" id="newLinkedBtn">＋ 新增疊單</button>
+    </div>
+
+    <div class="active-header">
+      <h2>進行中的訂單</h2>
+      <span class="count" id="activeCount">0 單</span>
+    </div>
+    <div id="activeList"><div class="empty">目前沒有進行中的訂單</div></div>
+
+    <div class="summary">
+      <div class="card">
+        <div class="label">今日趟數</div>
+        <div class="value" id="todayCount">0</div>
+      </div>
+      <div class="card">
+        <div class="label">起價總和</div>
+        <div class="value" id="todayBaseSum">NT$0</div>
+      </div>
+      <div class="card">
+        <div class="label">差額費總和</div>
+        <div class="value" id="todayFeeSum">NT$0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabDetail" class="tab-panel">
+    <div class="settings-row" style="flex-wrap:wrap;margin-bottom:12px;">
+      <label>範圍</label>
+      <select id="exportRange" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px;font-family:inherit;font-size:14px;">
+        <option value="today">今天</option>
+        <option value="all">全部歷史</option>
+        <option value="custom">自訂日期範圍</option>
+      </select>
+    </div>
+    <div class="settings-row" id="customDateRow" style="display:none;margin-bottom:12px;">
+      <input type="date" id="rangeStart" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px;font-family:inherit;">
+      <span style="color:var(--muted);">至</span>
+      <input type="date" id="rangeEnd" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px;font-family:inherit;">
+    </div>
+    <div id="exportPreviewWrap"></div>
+    <div class="history-actions">
+      <button class="export-btn" id="exportCsvBtn">下載 CSV</button>
+      <button class="clear-all" id="clearAllBtn" style="display:none;">清空所有紀錄</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmClearOverlay">
+  <div class="settings-panel" style="max-width:340px;text-align:center;">
+    <h3 style="margin-bottom:10px;">清空所有紀錄？</h3>
+    <p class="hint" style="margin-bottom:18px;">這會刪除全部歷史紀錄，且無法復原。建議先用「下載 CSV」備份。</p>
+    <div class="settings-actions">
+      <button class="cancel" id="confirmClearCancel">取消</button>
+      <button class="confirm" id="confirmClearOk" style="background:var(--red);color:#3A0F0F;">確定清空</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const settings = { freeMinutes: 11, ratePerMinute: 4.1 };
+const KEY_ACTIVE = 'meter_active';
+const KEY_ORDERS = 'meter_orders';
+
+let active = [];
+let orders = [];
+
+const $ = id => document.getElementById(id);
+
+function loadJSON(key, fallback){
+  try{
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+}
+function genId(){
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);
+}
+
+function fmtHHMM(ts){
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function fmtMMSS(ms){
+  const totalSec = Math.max(0, Math.floor(ms/1000));
+  const m = Math.floor(totalSec/60);
+  const s = totalSec%60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function money(n){
+  const r = Math.round(n*10)/10;
+  return 'NT$' + (Number.isInteger(r) ? r : r.toFixed(1));
+}
+function moneyExport(n){
+  const r = Math.round(n*10)/10;
+  return (Number.isInteger(r) ? r : r.toFixed(1)) + '元';
+}
+function calcFee(startTs, endTs){
+  const elapsedMs = endTs - startTs;
+  const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
+  const extraMin = Math.max(0, elapsedMinCeil - settings.freeMinutes);
+  const extraFee = Math.round(extraMin * settings.ratePerMinute);
+  return { elapsedMinCeil, extraMin, extraFee };
+}
+
+function init(){
+  active = loadJSON(KEY_ACTIVE, []);
+  orders = loadJSON(KEY_ORDERS, []);
+  let migrated = false;
+  orders.forEach(o=>{
+    const rounded = Math.round(o.extraFee);
+    if(rounded !== o.extraFee){
+      o.extraFee = rounded;
+      o.total = (o.basePrice || 0) + rounded;
+      migrated = true;
+    }
+  });
+  if(migrated) saveJSON(KEY_ORDERS, orders);
+  renderActive();
+  computeTodaySummary();
+  renderDetailTable();
+  setInterval(tick, 1000);
+}
+
+$('newOrderBtn').addEventListener('click', ()=>{
+  active.push({ id: genId(), basePrice: 0, startTs: Date.now() });
+  saveJSON(KEY_ACTIVE, active);
+  renderActive();
+});
+
+$('newLinkedBtn').addEventListener('click', ()=>{
+  const groupId = genId();
+  const now = Date.now();
+  active.push({ id: genId(), basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'primary' });
+  active.push({ id: genId(), basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'secondary' });
+  saveJSON(KEY_ACTIVE, active);
+  renderActive();
+});
+
+function renderActive(){
+  const list = $('activeList');
+  $('activeCount').textContent = active.length + ' 單';
+  if(active.length === 0){
+    list.innerHTML = '<div class="empty">目前沒有進行中的訂單</div>';
+    return;
+  }
+  const sorted = [...active].sort((a,b)=>a.startTs-b.startTs);
+  list.innerHTML = sorted.map(o => {
+    const isPrimary = o.linkRole === 'primary';
+    const isSecondary = o.linkRole === 'secondary';
+    const badge = isPrimary ? '<span class="link-badge">疊單 A</span>' : isSecondary ? '<span class="link-badge">疊單 B</span>' : '';
+    const priceRow = isSecondary
+      ? `<div class="order-base-row">
+           <label>起價（與A單共用）</label>
+           <div class="locked-price" data-locked-display="${o.id}">${money(o.basePrice)}</div>
+         </div>`
+      : `<div class="order-base-row">
+           <label>起價</label>
+           <div class="base-input"><span>NT$</span><input type="number" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="0" min="0"></div>
+         </div>`;
+    return `
+    <div class="order-card" data-order-id="${o.id}">
+      <div class="order-head">
+        <span class="order-start">開始 <b>${fmtHHMM(o.startTs)}</b>${badge}</span>
+        <button class="cancel-x" data-cancel="${o.id}" aria-label="取消這單">✕</button>
+      </div>
+      <div class="order-status-row">
+        <span class="order-timer" data-timer="${o.id}">00:00</span>
+        <span class="order-fee" data-fee="${o.id}">尚未超時</span>
+      </div>
+      <div class="order-base-row">
+        <label>單號</label>
+        <div class="base-input"><input type="text" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="選填"></div>
+      </div>
+      ${priceRow}
+      <button class="complete-btn" data-complete="${o.id}">完成</button>
+    </div>
+  `;
+  }).join('');
+}
+
+$('activeList').addEventListener('input', e=>{
+  const baseId = e.target.getAttribute('data-base');
+  const ordId = e.target.getAttribute('data-ordno');
+  if(baseId){
+    const o = active.find(a=>a.id===baseId);
+    if(o){
+      o.basePrice = parseFloat(e.target.value) || 0;
+      if(o.linkRole === 'primary' && o.linkGroupId){
+        active.filter(a => a.linkGroupId === o.linkGroupId && a.linkRole === 'secondary').forEach(sec=>{
+          sec.basePrice = o.basePrice;
+          const disp = document.querySelector(`[data-locked-display="${sec.id}"]`);
+          if(disp) disp.textContent = money(sec.basePrice);
+        });
+      }
+      saveJSON(KEY_ACTIVE, active);
+    }
+  }
+  if(ordId){
+    const o = active.find(a=>a.id===ordId);
+    if(o){ o.orderNo = e.target.value; saveJSON(KEY_ACTIVE, active); }
+  }
+});
+
+$('activeList').addEventListener('click', e=>{
+  const completeBtn = e.target.closest('[data-complete]');
+  const cancelBtn = e.target.closest('[data-cancel]');
+  if(completeBtn) completeOrder(completeBtn.getAttribute('data-complete'));
+  if(cancelBtn) cancelOrder(cancelBtn.getAttribute('data-cancel'));
+});
+
+function completeOrder(id){
+  const idx = active.findIndex(a=>a.id===id);
+  if(idx === -1) return;
+  const o = active[idx];
+  const endTs = Date.now();
+  const { elapsedMinCeil, extraMin, extraFee } = calcFee(o.startTs, endTs);
+  const record = {
+    id: genId(),
+    orderNo: o.orderNo || '',
+    basePrice: o.basePrice || 0,
+    excludeBaseFromTotal: o.linkRole === 'secondary',
+    startTs: o.startTs,
+    endTs,
+    elapsedMinCeil, extraMin, extraFee,
+    total: (o.basePrice || 0) + extraFee
+  };
+  orders.unshift(record);
+  active.splice(idx,1);
+  saveJSON(KEY_ACTIVE, active);
+  saveJSON(KEY_ORDERS, orders);
+  renderActive();
+  computeTodaySummary();
+  renderDetailTable();
+}
+
+function cancelOrder(id){
+  active = active.filter(a=>a.id!==id);
+  saveJSON(KEY_ACTIVE, active);
+  renderActive();
+}
+
+function tick(){
+  if(active.length === 0) return;
+  const now = Date.now();
+  active.forEach(o=>{
+    const timerEl = document.querySelector(`[data-timer="${o.id}"]`);
+    const feeEl = document.querySelector(`[data-fee="${o.id}"]`);
+    if(timerEl) timerEl.textContent = fmtMMSS(now - o.startTs);
+    if(feeEl){
+      const { extraMin, extraFee } = calcFee(o.startTs, now);
+      if(extraFee > 0){
+        feeEl.textContent = `已超時 ${extraMin} 分鐘，+${money(extraFee)}`;
+        feeEl.classList.add('over');
+      }else{
+        feeEl.textContent = `尚未超時`;
+        feeEl.classList.remove('over');
+      }
+    }
+  });
+}
+
+function computeTodaySummary(){
+  const today = new Date().toDateString();
+  const todayOrders = orders.filter(o => new Date(o.startTs).toDateString() === today);
+  $('todayCount').textContent = todayOrders.length;
+  $('todayBaseSum').textContent = money(todayOrders.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0));
+  $('todayFeeSum').textContent = money(todayOrders.reduce((s,o)=>s+o.extraFee,0));
+}
+
+$('clearAllBtn').addEventListener('click', ()=>{
+  $('confirmClearOverlay').classList.add('show');
+});
+$('confirmClearCancel').addEventListener('click', ()=>{
+  $('confirmClearOverlay').classList.remove('show');
+});
+$('confirmClearOk').addEventListener('click', ()=>{
+  orders = [];
+  saveJSON(KEY_ORDERS, orders);
+  computeTodaySummary();
+  renderDetailTable();
+  $('confirmClearOverlay').classList.remove('show');
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    $(tab === 'main' ? 'tabMain' : 'tabDetail').classList.add('active');
+    if(tab === 'detail') renderDetailTable();
+  });
+});
+
+function dayStart(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.getTime();
+}
+function getExportOrders(){
+  const range = $('exportRange').value;
+  const chronological = [...orders].reverse();
+  if(range === 'today'){
+    const today = new Date().toDateString();
+    return chronological.filter(o => new Date(o.startTs).toDateString() === today);
+  }
+  if(range === 'custom'){
+    const startVal = $('rangeStart').value;
+    const endVal = $('rangeEnd').value;
+    if(!startVal || !endVal) return [];
+    const startMs = dayStart(startVal);
+    const endMs = dayStart(endVal) + 24*60*60*1000;
+    return chronological.filter(o => o.startTs >= startMs && o.startTs < endMs);
+  }
+  return chronological;
+}
+function fmtDateOnly(ts){
+  const d = new Date(ts);
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${mm}/${dd}`;
+}
+function renderDetailTable(){
+  const wrap = $('exportPreviewWrap');
+  const list = getExportOrders();
+  $('clearAllBtn').style.display = orders.length === 0 ? 'none' : 'block';
+  if(list.length === 0){
+    wrap.innerHTML = '<div class="export-empty">這個範圍內沒有紀錄</div>';
+    return;
+  }
+  const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
+  const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
+  wrap.innerHTML = `
+    <div class="export-table-scroll">
+      <table class="export-table">
+        <thead><tr>
+          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>完成</th><th>超時</th><th>起價</th><th>差額費</th>
+        </tr></thead>
+        <tbody>
+          ${list.map((o,i) => `
+            <tr>
+              <td>${i+1}</td>
+              <td>${o.orderNo || '-'}</td>
+              <td>${fmtDateOnly(o.startTs)}</td>
+              <td>${fmtHHMM(o.startTs)}</td>
+              <td>${fmtHHMM(o.endTs)}</td>
+              <td>${o.extraMin}</td>
+              <td>${o.excludeBaseFromTotal ? '—' : moneyExport(o.basePrice)}</td>
+              <td>${o.extraFee>0 ? '+'+moneyExport(o.extraFee) : '0元'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr><td colspan="6">總計</td><td>${moneyExport(baseSum)}</td><td>${moneyExport(feeSum)}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+    ${list.some(o=>o.excludeBaseFromTotal) ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">— 表示疊單共用起價，已計入同組主單，不重複列入總計</p>' : ''}
+  `;
+}
+$('exportRange').addEventListener('change', ()=>{
+  $('customDateRow').style.display = $('exportRange').value === 'custom' ? 'flex' : 'none';
+  renderDetailTable();
+});
+$('rangeStart').addEventListener('change', renderDetailTable);
+$('rangeEnd').addEventListener('change', renderDetailTable);
+function buildExportRows(list){
+  const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
+  const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
+  const header = ['編號','單號','日期','開始','完成','超時','起價','差額費'];
+  const rows = list.map((o,i) => [
+    i+1, o.orderNo || '', fmtDateOnly(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee
+  ]);
+  const totalRow = ['','總計','','','','', baseSum.toFixed(1), feeSum.toFixed(1)];
+  return { header, rows, totalRow, baseSum, feeSum };
+}
+function csvEscape(v){
+  const s = String(v ?? '');
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+$('exportCsvBtn').addEventListener('click', ()=>{
+  const list = getExportOrders();
+  if(list.length === 0){ alert('這個範圍內沒有紀錄可以匯出'); return; }
+  const { header, rows, totalRow } = buildExportRows(list);
+  const csv = '\uFEFF' + [header, ...rows, totalRow].map(r => r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const fname = `外送紀錄_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+init();
+</script>
+</body>
+</html>
