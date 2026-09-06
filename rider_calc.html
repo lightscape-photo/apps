@@ -197,18 +197,18 @@
     font-size:13px;padding:9px 14px;border-radius:10px;cursor:pointer;font-family:inherit;
   }
   .export-btn:active{transform:scale(0.97);}
-  .export-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;}
+  .export-table{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:14px;font-size:10.5px;}
   .export-table th,.export-table td{
-    padding:7px 6px;text-align:center;border-bottom:1px solid var(--border);
-    font-family:'IBM Plex Mono',monospace;white-space:nowrap;
+    width:12.5%;padding:6px 2px;text-align:center;border-bottom:1px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;white-space:normal;word-break:break-word;overflow-wrap:break-word;
   }
-  .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;text-align:center;}
-  .export-table th:nth-child(7),.export-table td:nth-child(7),
-  .export-table th:nth-child(8),.export-table td:nth-child(8){text-align:right;}
+  .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;font-size:10px;text-align:center;}
+  .export-table td:nth-child(7),
+  .export-table td:nth-child(8){text-align:right;}
   .export-table tfoot td:nth-child(2),.export-table tfoot td:nth-child(3){text-align:right;}
   .export-table tbody tr:last-child td{border-bottom:none;}
   .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
-  .export-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .export-table-scroll{overflow-x:hidden;}
   .export-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;}
 
   .tabs{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:18px;}
