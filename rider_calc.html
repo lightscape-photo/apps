@@ -375,6 +375,14 @@ function moneyPadded(n){
   const padded = numStr.length < width ? '\u00A0'.repeat(width - numStr.length) + numStr : numStr;
   return padded + '元';
 }
+function diffPadded(n){
+  const r = Math.round(n*10)/10;
+  const numStr = Number.isInteger(r) ? String(r) : r.toFixed(1);
+  const signed = '+' + numStr;
+  const width = 4;
+  const padded = signed.length < width ? '\u00A0'.repeat(width - signed.length) + signed : signed;
+  return padded + '元';
+}
 function calcFee(startTs, endTs){
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
@@ -647,7 +655,7 @@ function renderDetailTable(){
               <td>${fmtHHMM(o.endTs)}</td>
               <td>${o.extraMin}</td>
               <td>${o.excludeBaseFromTotal ? '—' : moneyPadded(o.basePrice)}</td>
-              <td>${o.extraFee>0 ? '+'+moneyPadded(o.extraFee) : '0元'}</td>
+              <td>${o.extraFee>0 ? diffPadded(o.extraFee) : '0元'}</td>
             </tr>
           `).join('')}
         </tbody>
