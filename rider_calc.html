@@ -368,6 +368,13 @@ function moneyExport(n){
   const r = Math.round(n*10)/10;
   return (Number.isInteger(r) ? r : r.toFixed(1)) + '元';
 }
+function moneyPadded(n){
+  const r = Math.round(n*10)/10;
+  const numStr = Number.isInteger(r) ? String(r) : r.toFixed(1);
+  const width = 3;
+  const padded = numStr.length < width ? '\u00A0'.repeat(width - numStr.length) + numStr : numStr;
+  return padded + '元';
+}
 function calcFee(startTs, endTs){
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
@@ -628,7 +635,7 @@ function renderDetailTable(){
     <div class="export-table-scroll">
       <table class="export-table">
         <thead><tr>
-          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額費</th>
+          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額</th>
         </tr></thead>
         <tbody>
           ${list.map((o,i) => `
@@ -639,8 +646,8 @@ function renderDetailTable(){
               <td>${fmtHHMM(o.startTs)}</td>
               <td>${fmtHHMM(o.endTs)}</td>
               <td>${o.extraMin}</td>
-              <td>${o.excludeBaseFromTotal ? '—' : moneyExport(o.basePrice)}</td>
-              <td>${o.extraFee>0 ? '+'+moneyExport(o.extraFee) : '0元'}</td>
+              <td>${o.excludeBaseFromTotal ? '—' : moneyPadded(o.basePrice)}</td>
+              <td>${o.extraFee>0 ? '+'+moneyPadded(o.extraFee) : '0元'}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -661,7 +668,7 @@ $('rangeEnd').addEventListener('change', renderDetailTable);
 function buildExportRows(list){
   const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
   const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
-  const header = ['編號','單號','日期','開始','結束','超時','起價','差額費'];
+  const header = ['編號','單號','日期','開始','結束','超時','起價','差額'];
   const rows = list.map((o,i) => [
     i+1, o.orderNo || '', fmtDateOnly(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee
   ]);
