@@ -203,6 +203,9 @@
     font-family:'IBM Plex Mono',monospace;white-space:nowrap;
   }
   .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;text-align:center;}
+  .export-table th:nth-child(7),.export-table td:nth-child(7),
+  .export-table th:nth-child(8),.export-table td:nth-child(8){text-align:right;}
+  .export-table tfoot td:nth-child(2),.export-table tfoot td:nth-child(3){text-align:right;}
   .export-table tbody tr:last-child td{border-bottom:none;}
   .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
   .export-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -628,7 +631,7 @@ function renderDetailTable(){
     <div class="export-table-scroll">
       <table class="export-table">
         <thead><tr>
-          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>完成</th><th>超時</th><th>起價</th><th>差額費</th>
+          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額費</th>
         </tr></thead>
         <tbody>
           ${list.map((o,i) => `
@@ -661,7 +664,7 @@ $('rangeEnd').addEventListener('change', renderDetailTable);
 function buildExportRows(list){
   const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
   const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
-  const header = ['編號','單號','日期','開始','完成','超時','起價','差額費'];
+  const header = ['編號','單號','日期','開始','結束','超時','起價','差額費'];
   const rows = list.map((o,i) => [
     i+1, o.orderNo || '', fmtDateOnly(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee
   ]);
