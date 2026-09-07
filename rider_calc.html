@@ -122,28 +122,11 @@
   }
   .locked-price{padding:4px 8px;font-size:14px;}
 
-  .swipe-complete{
-    position:relative;width:100%;height:46px;border-radius:12px;
-    background:var(--panel-2);border:1px solid var(--border);
-    overflow:hidden;user-select:none;
+  .complete-btn{
+    width:100%;padding:11px;border-radius:12px;border:none;background:var(--green);
+    color:var(--on-green);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
   }
-  .swipe-fill{
-    position:absolute;top:0;left:0;height:100%;width:0;
-    background:var(--green);opacity:0.28;pointer-events:none;
-  }
-  .swipe-label{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    color:var(--muted);font-size:14px;font-weight:600;pointer-events:none;letter-spacing:0.5px;
-  }
-  .swipe-handle{
-    position:absolute;top:3px;left:3px;width:40px;height:40px;border-radius:10px;
-    background:var(--green);color:var(--on-green);display:flex;align-items:center;justify-content:center;
-    font-size:18px;font-weight:700;cursor:grab;touch-action:none;
-  }
-  .swipe-handle:active,.swipe-handle.dragging{cursor:grabbing;}
-  .swipe-complete.snap .swipe-handle{transition:left 0.25s ease;}
-  .swipe-complete.snap .swipe-fill{transition:width 0.25s ease;}
-  .swipe-complete.done .swipe-label{color:var(--on-green);}
+  .complete-btn:active{transform:scale(0.98);}
 
   .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
   .summary .card{
@@ -356,6 +339,17 @@
   </div>
 </div>
 
+<div class="overlay" id="confirmCompleteOverlay">
+  <div class="settings-panel" style="max-width:340px;text-align:center;">
+    <h3 style="margin-bottom:10px;">確定要完成這一單嗎？</h3>
+    <p class="hint" id="confirmCompleteOrderNo" style="margin-bottom:18px;">單號：</p>
+    <div class="settings-actions">
+      <button class="cancel" id="confirmCompleteCancel">取消</button>
+      <button class="confirm" id="confirmCompleteOk" style="background:var(--green);color:var(--on-green);">確定完成</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const settings = { freeMinutes: 11, ratePerMinute: 4.1 };
 const KEY_ACTIVE = 'meter_active';
@@ -480,15 +474,10 @@ function renderActive(){
         <div class="base-input"><input type="text" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="選填"></div>
       </div>
       ${priceRow}
-      <div class="swipe-complete" data-swipe-id="${o.id}">
-        <div class="swipe-fill" data-swipe-fill="${o.id}"></div>
-        <div class="swipe-label">完成外送</div>
-        <div class="swipe-handle" data-swipe-handle="${o.id}">→</div>
-      </div>
+      <button class="complete-btn" data-complete="${o.id}">完成</button>
     </div>
   `;
   }).join('');
-  initSwipeHandlers();
 }
 
 $('activeList').addEventListener('input', e=>{
@@ -516,62 +505,28 @@ $('activeList').addEventListener('input', e=>{
 
 $('activeList').addEventListener('click', e=>{
   const cancelBtn = e.target.closest('[data-cancel]');
+  const completeBtn = e.target.closest('[data-complete]');
   if(cancelBtn) cancelOrder(cancelBtn.getAttribute('data-cancel'));
+  if(completeBtn) openCompleteConfirm(completeBtn.getAttribute('data-complete'));
 });
 
-function initSwipeHandlers(){
-  document.querySelectorAll('.swipe-handle').forEach(handleEl=>{
-    const id = handleEl.getAttribute('data-swipe-handle');
-    const container = handleEl.closest('.swipe-complete');
-    const fillEl = container.querySelector('.swipe-fill');
-    const handleSize = 40;
-    const edgeGap = 3;
-    let dragging = false;
-    let startX = 0;
-    let startLeft = edgeGap;
-
-    function getMaxDist(){
-      return container.clientWidth - handleSize - edgeGap * 2;
-    }
-    function onPointerDown(e){
-      dragging = true;
-      container.classList.remove('snap');
-      startX = e.clientX;
-      startLeft = parseFloat(handleEl.style.left || edgeGap);
-      handleEl.setPointerCapture(e.pointerId);
-      handleEl.classList.add('dragging');
-    }
-    function onPointerMove(e){
-      if(!dragging) return;
-      const maxDist = getMaxDist();
-      let dx = startLeft - edgeGap + (e.clientX - startX);
-      dx = Math.max(0, Math.min(dx, maxDist));
-      handleEl.style.left = (edgeGap + dx) + 'px';
-      fillEl.style.width = (dx + handleSize + edgeGap) + 'px';
-    }
-    function onPointerUp(){
-      if(!dragging) return;
-      dragging = false;
-      handleEl.classList.remove('dragging');
-      const maxDist = getMaxDist();
-      const dx = parseFloat(handleEl.style.left || edgeGap) - edgeGap;
-      if(maxDist > 0 && dx >= maxDist * 0.4){
-        handleEl.style.left = (edgeGap + maxDist) + 'px';
-        fillEl.style.width = '100%';
-        container.classList.add('done');
-        setTimeout(()=> completeOrder(id), 140);
-      }else{
-        container.classList.add('snap');
-        handleEl.style.left = edgeGap + 'px';
-        fillEl.style.width = '0px';
-      }
-    }
-    handleEl.addEventListener('pointerdown', onPointerDown);
-    handleEl.addEventListener('pointermove', onPointerMove);
-    handleEl.addEventListener('pointerup', onPointerUp);
-    handleEl.addEventListener('pointercancel', onPointerUp);
-  });
+let pendingCompleteId = null;
+function openCompleteConfirm(id){
+  const o = active.find(a => a.id === id);
+  if(!o) return;
+  pendingCompleteId = id;
+  $('confirmCompleteOrderNo').textContent = '單號：' + (o.orderNo ? o.orderNo : '未填寫');
+  $('confirmCompleteOverlay').classList.add('show');
 }
+$('confirmCompleteCancel').addEventListener('click', ()=>{
+  pendingCompleteId = null;
+  $('confirmCompleteOverlay').classList.remove('show');
+});
+$('confirmCompleteOk').addEventListener('click', ()=>{
+  if(pendingCompleteId) completeOrder(pendingCompleteId);
+  pendingCompleteId = null;
+  $('confirmCompleteOverlay').classList.remove('show');
+});
 
 function completeOrder(id){
   const idx = active.findIndex(a=>a.id===id);
