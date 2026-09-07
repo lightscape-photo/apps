@@ -204,9 +204,6 @@
     font-family:'IBM Plex Mono',monospace;white-space:normal;word-break:break-word;overflow-wrap:break-word;
   }
   .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;font-size:10px;text-align:center;}
-  .export-table th:nth-child(9),.export-table td:nth-child(9){width:24px;padding:6px 0;}
-  .export-table .del-btn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px;}
-  .export-table .del-btn:active{color:var(--red);}
   .export-table tbody tr:last-child td{border-bottom:none;}
   .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
   .export-table-scroll{overflow-x:hidden;}
@@ -659,7 +656,7 @@ function renderDetailTable(){
     <div class="export-table-scroll">
       <table class="export-table">
         <thead><tr>
-          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額</th><th></th>
+          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額</th>
         </tr></thead>
         <tbody>
           ${list.map((o,i) => `
@@ -672,12 +669,11 @@ function renderDetailTable(){
               <td>${o.extraMin}</td>
               <td>${o.excludeBaseFromTotal ? '—' : `<input type="number" class="base-edit-input" data-edit-base="${o.id}" value="${o.basePrice}" min="0">`}</td>
               <td>${plainNum(o.extraFee)}</td>
-              <td class="detail-del-cell"><button class="del-btn" aria-label="刪除" data-del="${o.id}">✕</button></td>
             </tr>
           `).join('')}
         </tbody>
         <tfoot>
-          <tr><td colspan="6">總計</td><td>${moneyExport(baseSum)}</td><td>${moneyExport(feeSum)}</td><td></td></tr>
+          <tr><td colspan="6">總計</td><td>${moneyExport(baseSum)}</td><td>${moneyExport(feeSum)}</td></tr>
         </tfoot>
       </table>
     </div>
@@ -692,15 +688,6 @@ $('exportPreviewWrap').addEventListener('change', e=>{
   const newVal = parseFloat(e.target.value) || 0;
   order.basePrice = newVal;
   order.total = newVal + order.extraFee;
-  saveJSON(KEY_ORDERS, orders);
-  computeTodaySummary();
-  renderDetailTable();
-});
-$('exportPreviewWrap').addEventListener('click', e=>{
-  const delBtn = e.target.closest('[data-del]');
-  if(!delBtn) return;
-  const id = delBtn.getAttribute('data-del');
-  orders = orders.filter(o => o.id !== id);
   saveJSON(KEY_ORDERS, orders);
   computeTodaySummary();
   renderDetailTable();
