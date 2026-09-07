@@ -226,7 +226,10 @@
   .base-edit-input{
     width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);
     color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:inherit;
-    text-align:right;padding:2px 0;
+    text-align:center;padding:2px 0;-moz-appearance:textfield;appearance:textfield;
+  }
+  .base-edit-input::-webkit-outer-spin-button,.base-edit-input::-webkit-inner-spin-button{
+    -webkit-appearance:none;margin:0;
   }
   .base-edit-input:focus{outline:none;border-bottom:1px solid var(--amber);}
   .export-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;}
@@ -549,7 +552,7 @@ function initSwipeHandlers(){
       handleEl.classList.remove('dragging');
       const maxDist = getMaxDist();
       const dx = parseFloat(handleEl.style.left || edgeGap) - edgeGap;
-      if(maxDist > 0 && dx >= maxDist * 0.82){
+      if(maxDist > 0 && dx >= maxDist * 0.4){
         handleEl.style.left = (edgeGap + maxDist) + 'px';
         fillEl.style.width = '100%';
         container.classList.add('done');
