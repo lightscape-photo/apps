@@ -127,6 +127,7 @@
     color:var(--on-green);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
   }
   .complete-btn:active{transform:scale(0.98);}
+  .complete-btn.armed{color:var(--on-green);}
 
   .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
   .summary .card{
@@ -339,17 +340,6 @@
   </div>
 </div>
 
-<div class="overlay" id="confirmCompleteOverlay">
-  <div class="settings-panel" style="max-width:340px;text-align:center;">
-    <h3 style="margin-bottom:10px;">確定要完成這一單嗎？</h3>
-    <p class="hint" id="confirmCompleteOrderNo" style="margin-bottom:18px;">單號：</p>
-    <div class="settings-actions">
-      <button class="cancel" id="confirmCompleteCancel">取消</button>
-      <button class="confirm" id="confirmCompleteOk" style="background:var(--green);color:var(--on-green);">確定完成</button>
-    </div>
-  </div>
-</div>
-
 <script>
 const settings = { freeMinutes: 11, ratePerMinute: 4.1 };
 const KEY_ACTIVE = 'meter_active';
@@ -439,6 +429,7 @@ $('newLinkedBtn').addEventListener('click', ()=>{
 });
 
 function renderActive(){
+  armedIds.clear();
   const list = $('activeList');
   $('activeCount').textContent = active.length + ' 單';
   if(active.length === 0){
@@ -507,26 +498,21 @@ $('activeList').addEventListener('click', e=>{
   const cancelBtn = e.target.closest('[data-cancel]');
   const completeBtn = e.target.closest('[data-complete]');
   if(cancelBtn) cancelOrder(cancelBtn.getAttribute('data-cancel'));
-  if(completeBtn) openCompleteConfirm(completeBtn.getAttribute('data-complete'));
+  if(completeBtn) handleCompleteClick(completeBtn);
 });
 
-let pendingCompleteId = null;
-function openCompleteConfirm(id){
-  const o = active.find(a => a.id === id);
-  if(!o) return;
-  pendingCompleteId = id;
-  $('confirmCompleteOrderNo').textContent = '單號：' + (o.orderNo ? o.orderNo : '未填寫');
-  $('confirmCompleteOverlay').classList.add('show');
+const armedIds = new Set();
+function handleCompleteClick(btn){
+  const id = btn.getAttribute('data-complete');
+  if(armedIds.has(id)){
+    armedIds.delete(id);
+    completeOrder(id);
+    return;
+  }
+  armedIds.add(id);
+  btn.textContent = '再點一次確認';
+  btn.classList.add('armed');
 }
-$('confirmCompleteCancel').addEventListener('click', ()=>{
-  pendingCompleteId = null;
-  $('confirmCompleteOverlay').classList.remove('show');
-});
-$('confirmCompleteOk').addEventListener('click', ()=>{
-  if(pendingCompleteId) completeOrder(pendingCompleteId);
-  pendingCompleteId = null;
-  $('confirmCompleteOverlay').classList.remove('show');
-});
 
 function completeOrder(id){
   const idx = active.findIndex(a=>a.id===id);
