@@ -53,6 +53,7 @@
     min-height:100vh;
     display:flex;
     justify-content:center;
+    overflow-x:hidden;
   }
   .app{width:100%;max-width:480px;padding:20px 16px 60px;}
   .icon-btn{
@@ -88,7 +89,7 @@
   .active-header h2{font-size:14px;color:var(--muted);font-weight:600;margin:0;}
   .active-header .count{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);}
 
-  .swipe-card-wrap{position:relative;margin-bottom:10px;border-radius:14px;}
+  .swipe-card-wrap{position:relative;margin-bottom:10px;border-radius:14px;overflow:hidden;}
   .order-card{
     position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;
     padding:12px 14px;touch-action:pan-y;
@@ -580,7 +581,7 @@ function initCardSwipeCancel(){
       if(cancelled) return;
       currentX = Math.max(0, dx);
       card.style.transform = `translateX(${currentX}px)`;
-      const maxDist = wrap.clientWidth * 0.4;
+      const maxDist = wrap.clientWidth * 0.2;
       const progress = Math.min(1, currentX / maxDist);
       card.style.opacity = String(1 - progress * 0.6);
     }
@@ -588,7 +589,7 @@ function initCardSwipeCancel(){
       if(!dragging) return;
       dragging = false;
       if(cancelled) return;
-      const maxDist = wrap.clientWidth * 0.4;
+      const maxDist = wrap.clientWidth * 0.2;
       card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
       if(currentX >= maxDist){
         card.style.transform = `translateX(${wrap.clientWidth}px)`;
