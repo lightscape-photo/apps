@@ -88,15 +88,14 @@
   .active-header h2{font-size:14px;color:var(--muted);font-weight:600;margin:0;}
   .active-header .count{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);}
 
+  .swipe-card-wrap{position:relative;margin-bottom:10px;border-radius:14px;}
   .order-card{
-    background:var(--panel);border:1px solid var(--border);border-radius:14px;
-    padding:12px 14px;margin-bottom:10px;
+    position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:12px 14px;touch-action:pan-y;
   }
   .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .order-start{font-size:12px;color:var(--muted);}
   .order-start b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
-  .cancel-x{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;}
-  .cancel-x:active{color:var(--red);}
 
   .order-status-row{
     display:flex;align-items:baseline;justify-content:space-between;gap:10px;
@@ -429,6 +428,12 @@ function renderActive(){
   armedIds.clear();
   const list = $('activeList');
   $('activeCount').textContent = active.length + ' 單';
+
+  const prevRects = {};
+  list.querySelectorAll('.swipe-card-wrap').forEach(el=>{
+    prevRects[el.getAttribute('data-swipe-card')] = el.getBoundingClientRect();
+  });
+
   if(active.length === 0){
     list.innerHTML = '<div class="empty">目前沒有進行中的訂單</div>';
     return;
@@ -448,24 +453,43 @@ function renderActive(){
            <div class="base-input"><span>NT$</span><input type="number" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="0" min="0"></div>
          </div>`;
     return `
-    <div class="order-card" data-order-id="${o.id}">
-      <div class="order-head">
-        <span class="order-start">開始 <b>${fmtHHMM(o.startTs)}</b>${badge}</span>
-        <button class="cancel-x" data-cancel="${o.id}" aria-label="取消這單">✕</button>
+    <div class="swipe-card-wrap" data-swipe-card="${o.id}">
+      <div class="order-card" data-order-id="${o.id}">
+        <div class="order-head">
+          <span class="order-start">開始 <b>${fmtHHMM(o.startTs)}</b>${badge}</span>
+        </div>
+        <div class="order-status-row">
+          <span class="order-timer" data-timer="${o.id}">00:00</span>
+          <span class="order-fee" data-fee="${o.id}">尚未超時</span>
+        </div>
+        <div class="order-base-row">
+          <label>單號</label>
+          <div class="base-input"><input type="text" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="選填"></div>
+        </div>
+        ${priceRow}
+        <button class="complete-btn" data-complete="${o.id}">完成</button>
       </div>
-      <div class="order-status-row">
-        <span class="order-timer" data-timer="${o.id}">00:00</span>
-        <span class="order-fee" data-fee="${o.id}">尚未超時</span>
-      </div>
-      <div class="order-base-row">
-        <label>單號</label>
-        <div class="base-input"><input type="text" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="選填"></div>
-      </div>
-      ${priceRow}
-      <button class="complete-btn" data-complete="${o.id}">完成</button>
     </div>
   `;
   }).join('');
+
+  initCardSwipeCancel();
+
+  list.querySelectorAll('.swipe-card-wrap').forEach(el=>{
+    const id = el.getAttribute('data-swipe-card');
+    const prev = prevRects[id];
+    if(!prev) return;
+    const next = el.getBoundingClientRect();
+    const dy = prev.top - next.top;
+    if(Math.abs(dy) < 1) return;
+    el.style.transition = 'none';
+    el.style.transform = `translateY(${dy}px)`;
+    requestAnimationFrame(()=>{
+      el.style.transition = 'transform 0.22s ease';
+      el.style.transform = 'translateY(0)';
+      setTimeout(()=>{ el.style.transition=''; el.style.transform=''; }, 240);
+    });
+  });
 }
 
 $('activeList').addEventListener('input', e=>{
@@ -492,9 +516,7 @@ $('activeList').addEventListener('input', e=>{
 });
 
 $('activeList').addEventListener('click', e=>{
-  const cancelBtn = e.target.closest('[data-cancel]');
   const completeBtn = e.target.closest('[data-complete]');
-  if(cancelBtn) cancelOrder(cancelBtn.getAttribute('data-cancel'));
   if(completeBtn) handleCompleteClick(completeBtn);
 });
 
@@ -503,12 +525,86 @@ function handleCompleteClick(btn){
   const id = btn.getAttribute('data-complete');
   if(armedIds.has(id)){
     armedIds.delete(id);
-    completeOrder(id);
+    animateCompleteExit(id, ()=> completeOrder(id));
     return;
   }
   armedIds.add(id);
   btn.textContent = '再點一次確認';
   btn.classList.add('armed');
+}
+
+function animateCompleteExit(id, callback){
+  const wrap = document.querySelector(`.swipe-card-wrap[data-swipe-card="${id}"]`);
+  if(!wrap){ callback(); return; }
+  const card = wrap.querySelector('.order-card');
+  card.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+  card.style.transform = 'scale(0.94)';
+  card.style.opacity = '0';
+  setTimeout(callback, 180);
+}
+
+function initCardSwipeCancel(){
+  document.querySelectorAll('.swipe-card-wrap').forEach(wrap=>{
+    const id = wrap.getAttribute('data-swipe-card');
+    const card = wrap.querySelector('.order-card');
+    let dragging = false;
+    let decided = false;
+    let cancelled = false;
+    let startX = 0, startY = 0;
+    let currentX = 0;
+
+    function onPointerDown(e){
+      if(e.target.closest('input, button')) return;
+      dragging = true;
+      decided = false;
+      cancelled = false;
+      currentX = 0;
+      startX = e.clientX;
+      startY = e.clientY;
+      card.style.transition = 'none';
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if(!decided){
+        if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        decided = true;
+        if(Math.abs(dy) > Math.abs(dx)){
+          cancelled = true;
+          dragging = false;
+          return;
+        }
+        card.setPointerCapture(e.pointerId);
+      }
+      if(cancelled) return;
+      currentX = Math.max(0, dx);
+      card.style.transform = `translateX(${currentX}px)`;
+      const maxDist = wrap.clientWidth * 0.4;
+      const progress = Math.min(1, currentX / maxDist);
+      card.style.opacity = String(1 - progress * 0.6);
+    }
+    function onPointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      if(cancelled) return;
+      const maxDist = wrap.clientWidth * 0.4;
+      card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      if(currentX >= maxDist){
+        card.style.transform = `translateX(${wrap.clientWidth}px)`;
+        card.style.opacity = '0';
+        setTimeout(()=> cancelOrder(id), 180);
+      }else{
+        card.style.transform = 'translateX(0)';
+        card.style.opacity = '1';
+      }
+      currentX = 0;
+    }
+    wrap.addEventListener('pointerdown', onPointerDown);
+    wrap.addEventListener('pointermove', onPointerMove);
+    wrap.addEventListener('pointerup', onPointerUp);
+    wrap.addEventListener('pointercancel', onPointerUp);
+  });
 }
 
 function completeOrder(id){
