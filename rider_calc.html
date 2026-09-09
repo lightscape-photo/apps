@@ -402,7 +402,11 @@ function calcFee(startTs, endTs, basePrice){
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
   const extraFee = calculateDeliverySubsidy(price, elapsedMinCeil);
-  const thresholdMin = Math.max(0, Math.ceil(price / 4.1));
+  let firstOverMin = 0;
+  while(calculateDeliverySubsidy(price, firstOverMin) <= 0 && firstOverMin < 100000){
+    firstOverMin++;
+  }
+  const thresholdMin = Math.max(0, firstOverMin - 1);
   const extraMin = Math.max(0, elapsedMinCeil - thresholdMin);
   return { elapsedMinCeil, thresholdMin, extraMin, extraFee };
 }
