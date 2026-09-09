@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" id="themeColorMeta" content="#FFFFFF">
 <title>UE跑跑算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+TC:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
@@ -43,6 +43,23 @@
     --on-green:#fff;
     --on-amber:#fff;
     --on-red:#fff;
+  }
+  html[data-theme="cyberpunk"]{
+    --bg:#0A0E17;
+    --panel:#140B28;
+    --panel-2:#1F0F35;
+    --text:#E8F4FF;
+    --muted:#9A8BC2;
+    --amber:#FF2A6D;
+    --amber-dim:#3D0A22;
+    --green:#05D9E8;
+    --green-dim:#062830;
+    --red:#FF3C64;
+    --border:#331E52;
+    --brand-uber-color:#05D9E8;
+    --on-green:#0A0E17;
+    --on-amber:#0A0E17;
+    --on-red:#0A0E17;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -94,6 +111,14 @@
     position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;
     padding:12px 14px;touch-action:pan-y;
   }
+  .ordno-row{margin-bottom:8px;}
+  .ordno-input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+    padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;
+    text-align:center;letter-spacing:1px;color:var(--text);
+  }
+  .ordno-input:focus{outline:none;border-color:var(--amber);}
+  .ordno-input::placeholder{font-weight:400;font-size:14px;letter-spacing:normal;}
   .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .order-start{font-size:12px;color:var(--muted);}
   .order-start b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
@@ -207,15 +232,22 @@
   .export-table tbody tr:last-child td{border-bottom:none;}
   .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
   .export-table-scroll{overflow-x:hidden;}
-  .base-edit-input{
+  .detail-edit-input{
     width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);
     color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:inherit;
-    text-align:center;padding:2px 0;-moz-appearance:textfield;appearance:textfield;
+    text-align:center;padding:2px 0;min-width:0;box-sizing:border-box;
   }
+  .detail-edit-input:focus{outline:none;border-bottom:1px solid var(--amber);}
+  .base-edit-input{-moz-appearance:textfield;appearance:textfield;}
   .base-edit-input::-webkit-outer-spin-button,.base-edit-input::-webkit-inner-spin-button{
     -webkit-appearance:none;margin:0;
   }
-  .base-edit-input:focus{outline:none;border-bottom:1px solid var(--amber);}
+  .time-edit-input{font-size:11px;padding:2px;}
+  .ordno-edit-input{font-weight:600;}
+  .export-table th:nth-child(4),.export-table td:nth-child(4),
+  .export-table th:nth-child(5),.export-table td:nth-child(5){width:16%;}
+  .export-table th:nth-child(1),.export-table td:nth-child(1),
+  .export-table th:nth-child(6),.export-table td:nth-child(6){width:9%;}
   .export-empty{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;}
 
   .tabs{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:18px;}
@@ -232,9 +264,9 @@
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
-  .theme-option-row{display:flex;gap:12px;}
+  .theme-option-row{display:flex;gap:12px;flex-wrap:wrap;}
   .theme-option{
-    flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;
+    flex:1;min-width:100px;display:flex;flex-direction:column;align-items:center;gap:10px;
     background:var(--panel);border:1px solid var(--border);border-radius:14px;
     padding:16px 10px;cursor:pointer;font-family:inherit;
   }
@@ -245,6 +277,7 @@
   }
   .theme-swatch-dark{background:#1B1F24;}
   .theme-swatch-light{background:#FFFFFF;}
+  .theme-swatch-cyberpunk{background:linear-gradient(135deg,#FF2A6D 0%,#0A0E17 55%,#05D9E8 100%);}
   .theme-option-label{font-size:13px;color:var(--text);font-weight:600;text-align:center;line-height:1.5;}
   .theme-option-sub{font-size:11px;color:var(--muted);font-weight:400;}
 </style>
@@ -314,13 +347,17 @@
       <h2>主題色</h2>
     </div>
     <div class="theme-option-row">
-      <button class="theme-option" data-theme-choice="dark">
-        <span class="theme-swatch theme-swatch-dark"></span>
-        <span class="theme-option-label">深色主題<br><span class="theme-option-sub">預設</span></span>
-      </button>
       <button class="theme-option" data-theme-choice="light">
         <span class="theme-swatch theme-swatch-light"></span>
-        <span class="theme-option-label">白色主題</span>
+        <span class="theme-option-label">白色主題<br><span class="theme-option-sub">預設</span></span>
+      </button>
+      <button class="theme-option" data-theme-choice="dark">
+        <span class="theme-swatch theme-swatch-dark"></span>
+        <span class="theme-option-label">深色主題</span>
+      </button>
+      <button class="theme-option" data-theme-choice="cyberpunk">
+        <span class="theme-swatch theme-swatch-cyberpunk"></span>
+        <span class="theme-option-label">賽博龐克</span>
       </button>
     </div>
   </div>
@@ -362,6 +399,30 @@ function genId(){
 function fmtHHMM(ts){
   const d = new Date(ts);
   return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function parseTimeInput(str){
+  str = (str || '').trim();
+  if(!str) return null;
+  let h, m;
+  if(str.includes(':')){
+    const parts = str.split(':');
+    if(parts.length !== 2) return null;
+    h = parseInt(parts[0], 10);
+    m = parseInt(parts[1], 10);
+  }else{
+    const digits = str.replace(/\D/g, '');
+    if(digits.length === 3){
+      h = parseInt(digits.slice(0,1), 10);
+      m = parseInt(digits.slice(1), 10);
+    }else if(digits.length === 4){
+      h = parseInt(digits.slice(0,2), 10);
+      m = parseInt(digits.slice(2), 10);
+    }else{
+      return null;
+    }
+  }
+  if(isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return { h, m };
 }
 function fmtMMSS(ms){
   const totalSec = Math.max(0, Math.floor(ms/1000));
@@ -418,7 +479,9 @@ function getFeeStatus(o, now){
   if(extraFee > 0){
     return { text: `已超時 ${extraMin} 分鐘，+${money(extraFee)}`, over: true };
   }
-  return { text: `跑超過 ${thresholdMin} 分鐘才開始補差額`, over: false };
+  const targetTs = o.startTs + thresholdMin * 60000;
+  const remainStr = fmtMMSS(targetTs - now);
+  return { text: `還有 ${remainStr} 開始補差額`, over: false };
 }
 
 function init(){
@@ -434,7 +497,7 @@ function init(){
     }
   });
   if(migrated) saveJSON(KEY_ORDERS, orders);
-  applyTheme(loadJSON(KEY_THEME, 'dark'));
+  applyTheme(loadJSON(KEY_THEME, 'light'));
   renderActive();
   computeTodaySummary();
   renderDetailTable();
@@ -489,16 +552,15 @@ function renderActive(){
     return `
     <div class="swipe-card-wrap" data-swipe-card="${o.id}">
       <div class="order-card" data-order-id="${o.id}">
+        <div class="ordno-row">
+          <input type="text" class="ordno-input" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="輸入單號">
+        </div>
         <div class="order-head">
           <span class="order-start">開始 <b>${fmtHHMM(o.startTs)}</b>${badge}</span>
         </div>
         <div class="order-status-row">
           <span class="order-timer" data-timer="${o.id}">00:00</span>
           <span class="order-fee${feeStatus.over ? ' over' : ''}" data-fee="${o.id}">${feeStatus.text}</span>
-        </div>
-        <div class="order-base-row">
-          <label>單號</label>
-          <div class="base-input"><input type="text" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="選填"></div>
         </div>
         ${priceRow}
         <button class="complete-btn" data-complete="${o.id}">完成</button>
@@ -564,7 +626,16 @@ $('activeList').addEventListener('input', e=>{
   }
   if(ordId){
     const o = active.find(a=>a.id===ordId);
-    if(o){ o.orderNo = e.target.value; saveJSON(KEY_ACTIVE, active); }
+    if(o){
+      const upper = e.target.value.toUpperCase();
+      o.orderNo = upper;
+      if(e.target.value !== upper){
+        const cursorPos = e.target.selectionStart;
+        e.target.value = upper;
+        e.target.setSelectionRange(cursorPos, cursorPos);
+      }
+      saveJSON(KEY_ACTIVE, active);
+    }
   }
 });
 
@@ -744,14 +815,19 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 
 const KEY_THEME = 'meter_theme';
 function applyTheme(theme){
-  if(theme === 'light'){
-    document.documentElement.setAttribute('data-theme', 'light');
+  if(theme === 'light' || theme === 'cyberpunk'){
+    document.documentElement.setAttribute('data-theme', theme);
   }else{
     document.documentElement.removeAttribute('data-theme');
   }
   document.querySelectorAll('.theme-option').forEach(btn=>{
     btn.classList.toggle('active', btn.getAttribute('data-theme-choice') === theme);
   });
+  const metaTheme = $('themeColorMeta');
+  if(metaTheme){
+    const colorMap = { light: '#FFFFFF', cyberpunk: '#0A0E17', dark: '#1B1F24' };
+    metaTheme.setAttribute('content', colorMap[theme] || colorMap.dark);
+  }
 }
 document.querySelectorAll('.theme-option').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -808,12 +884,12 @@ function renderDetailTable(){
           ${list.map((o,i) => `
             <tr>
               <td>${i+1}</td>
-              <td>${o.orderNo || '-'}</td>
+              <td><input type="text" class="detail-edit-input ordno-edit-input" data-edit-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="-"></td>
               <td>${fmtDateOnly(o.startTs)}</td>
-              <td>${fmtHHMM(o.startTs)}</td>
-              <td>${fmtHHMM(o.endTs)}</td>
+              <td><input type="text" inputmode="numeric" maxlength="5" class="detail-edit-input time-edit-input" data-edit-start="${o.id}" value="${fmtHHMM(o.startTs)}" placeholder="HH:MM"></td>
+              <td><input type="text" inputmode="numeric" maxlength="5" class="detail-edit-input time-edit-input" data-edit-end="${o.id}" value="${fmtHHMM(o.endTs)}" placeholder="HH:MM"></td>
               <td>${o.extraMin}</td>
-              <td>${o.excludeBaseFromTotal ? '—' : `<input type="number" class="base-edit-input" data-edit-base="${o.id}" value="${o.basePrice}" min="0">`}</td>
+              <td>${o.excludeBaseFromTotal ? '—' : `<input type="number" class="detail-edit-input base-edit-input" data-edit-base="${o.id}" value="${o.basePrice}" min="0">`}</td>
               <td>${plainNum(o.extraFee)}</td>
             </tr>
           `).join('')}
@@ -823,20 +899,96 @@ function renderDetailTable(){
         </tfoot>
       </table>
     </div>
+    <p id="editTimeError" style="font-size:11px;color:var(--red);margin-top:6px;display:none;"></p>
     ${list.some(o=>o.excludeBaseFromTotal) ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">— 表示疊單共用單價，已計入同組主單，不重複列入總計</p>' : ''}
   `;
 }
+$('exportPreviewWrap').addEventListener('input', e=>{
+  const ordnoId = e.target.getAttribute('data-edit-ordno');
+  if(!ordnoId) return;
+  const upper = e.target.value.toUpperCase();
+  if(e.target.value !== upper){
+    const cursorPos = e.target.selectionStart;
+    e.target.value = upper;
+    e.target.setSelectionRange(cursorPos, cursorPos);
+  }
+});
 $('exportPreviewWrap').addEventListener('change', e=>{
-  const id = e.target.getAttribute('data-edit-base');
-  if(!id) return;
-  const order = orders.find(o => o.id === id);
-  if(!order) return;
-  const newVal = parseFloat(e.target.value) || 0;
-  order.basePrice = newVal;
-  order.total = newVal + order.extraFee;
-  saveJSON(KEY_ORDERS, orders);
-  computeTodaySummary();
-  renderDetailTable();
+  const baseId = e.target.getAttribute('data-edit-base');
+  const ordnoId = e.target.getAttribute('data-edit-ordno');
+  const startId = e.target.getAttribute('data-edit-start');
+  const endId = e.target.getAttribute('data-edit-end');
+
+  if(baseId){
+    const order = orders.find(o => o.id === baseId);
+    if(order){
+      const newVal = parseFloat(e.target.value) || 0;
+      order.basePrice = newVal;
+      order.total = newVal + order.extraFee;
+      saveJSON(KEY_ORDERS, orders);
+      computeTodaySummary();
+      renderDetailTable();
+    }
+    return;
+  }
+
+  if(ordnoId){
+    const order = orders.find(o => o.id === ordnoId);
+    if(order){
+      order.orderNo = e.target.value.toUpperCase();
+      saveJSON(KEY_ORDERS, orders);
+      renderDetailTable();
+    }
+    return;
+  }
+
+  if(startId || endId){
+    const id = startId || endId;
+    const order = orders.find(o => o.id === id);
+    if(!order) return;
+    const parsed = parseTimeInput(e.target.value);
+    if(!parsed){
+      const err = $('editTimeError');
+      err.textContent = '時間格式看不懂，請輸入像 14:30 或 1430 這樣的格式，已還原修改';
+      err.style.display = 'block';
+      setTimeout(()=>{ err.style.display = 'none'; }, 3000);
+      renderDetailTable();
+      return;
+    }
+    const { h, m } = parsed;
+
+    let newStartTs = order.startTs;
+    let newEndTs = order.endTs;
+    if(startId){
+      const d = new Date(order.startTs);
+      d.setHours(h, m, 0, 0);
+      newStartTs = d.getTime();
+    }else{
+      const d = new Date(order.endTs);
+      d.setHours(h, m, 0, 0);
+      newEndTs = d.getTime();
+    }
+
+    if(newEndTs <= newStartTs){
+      const err = $('editTimeError');
+      err.textContent = '完成時間必須晚於開始時間，已還原修改';
+      err.style.display = 'block';
+      setTimeout(()=>{ err.style.display = 'none'; }, 3000);
+      renderDetailTable();
+      return;
+    }
+
+    order.startTs = newStartTs;
+    order.endTs = newEndTs;
+    const { elapsedMinCeil, thresholdMin, extraMin, extraFee } = calcFee(newStartTs, newEndTs, order.basePrice);
+    order.elapsedMinCeil = elapsedMinCeil;
+    order.extraMin = extraMin;
+    order.extraFee = extraFee;
+    order.total = (order.basePrice || 0) + extraFee;
+    saveJSON(KEY_ORDERS, orders);
+    computeTodaySummary();
+    renderDetailTable();
+  }
 });
 $('exportRange').addEventListener('change', ()=>{
   $('customDateRow').style.display = $('exportRange').value === 'custom' ? 'flex' : 'none';
