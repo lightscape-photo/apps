@@ -704,7 +704,7 @@ function initCardSwipeCancel(){
       if(cancelled) return;
       currentX = Math.min(0, dx);
       card.style.transform = `translateX(${currentX}px)`;
-      const maxDist = wrap.clientWidth * 0.1;
+      const maxDist = wrap.clientWidth * 0.2;
       const progress = Math.min(1, Math.abs(currentX) / maxDist);
       card.style.opacity = String(1 - progress * 0.6);
     }
@@ -712,7 +712,7 @@ function initCardSwipeCancel(){
       if(!dragging) return;
       dragging = false;
       if(cancelled) return;
-      const maxDist = wrap.clientWidth * 0.1;
+      const maxDist = wrap.clientWidth * 0.2;
       card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
       if(Math.abs(currentX) >= maxDist){
         card.style.transform = `translateX(-${wrap.clientWidth}px)`;
