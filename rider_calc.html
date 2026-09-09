@@ -402,12 +402,19 @@ function calcFee(startTs, endTs, basePrice){
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
   const extraFee = calculateDeliverySubsidy(price, elapsedMinCeil);
-  let thresholdMin = 0;
-  while(calculateDeliverySubsidy(price, thresholdMin) <= 0 && thresholdMin < 100000){
-    thresholdMin++;
-  }
+  const thresholdMin = Math.max(0, Math.ceil(price / 4.1));
   const extraMin = Math.max(0, elapsedMinCeil - thresholdMin);
   return { elapsedMinCeil, thresholdMin, extraMin, extraFee };
+}
+function getFeeStatus(o, now){
+  if(!o.basePrice || o.basePrice <= 0){
+    return { text: '請先輸入單價', over: false };
+  }
+  const { thresholdMin, extraMin, extraFee } = calcFee(o.startTs, now, o.basePrice);
+  if(extraFee > 0){
+    return { text: `已超時 ${extraMin} 分鐘，+${money(extraFee)}`, over: true };
+  }
+  return { text: `跑超過 ${thresholdMin} 分鐘才開始補差額`, over: false };
 }
 
 function init(){
@@ -467,17 +474,14 @@ function renderActive(){
     const badge = isPrimary ? '<span class="link-badge">疊單 A</span>' : isSecondary ? '<span class="link-badge">疊單 B</span>' : '';
     const priceRow = isSecondary
       ? `<div class="order-base-row">
-           <label>起價（與A單共用）</label>
+           <label>單價（與A單共用）</label>
            <div class="locked-price" data-locked-display="${o.id}">${money(o.basePrice)}</div>
          </div>`
       : `<div class="order-base-row">
-           <label>起價</label>
+           <label>單價</label>
            <div class="base-input"><span>NT$</span><input type="number" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="0" min="0"></div>
          </div>`;
-    const initFee = calcFee(o.startTs, now0, o.basePrice);
-    const initFeeText = initFee.extraFee > 0
-      ? `已超時 ${initFee.extraMin} 分鐘，+${money(initFee.extraFee)}`
-      : `跑超過 ${initFee.thresholdMin} 分鐘才開始補差額`;
+    const feeStatus = getFeeStatus(o, now0);
     return `
     <div class="swipe-card-wrap" data-swipe-card="${o.id}">
       <div class="order-card" data-order-id="${o.id}">
@@ -486,7 +490,7 @@ function renderActive(){
         </div>
         <div class="order-status-row">
           <span class="order-timer" data-timer="${o.id}">00:00</span>
-          <span class="order-fee${initFee.extraFee > 0 ? ' over' : ''}" data-fee="${o.id}">${initFeeText}</span>
+          <span class="order-fee${feeStatus.over ? ' over' : ''}" data-fee="${o.id}">${feeStatus.text}</span>
         </div>
         <div class="order-base-row">
           <label>單號</label>
@@ -686,14 +690,9 @@ function cancelOrder(id){
 function updateFeeDisplay(o){
   const feeEl = document.querySelector(`[data-fee="${o.id}"]`);
   if(!feeEl) return;
-  const { thresholdMin, extraMin, extraFee } = calcFee(o.startTs, Date.now(), o.basePrice);
-  if(extraFee > 0){
-    feeEl.textContent = `已超時 ${extraMin} 分鐘，+${money(extraFee)}`;
-    feeEl.classList.add('over');
-  }else{
-    feeEl.textContent = `跑超過 ${thresholdMin} 分鐘才開始補差額`;
-    feeEl.classList.remove('over');
-  }
+  const status = getFeeStatus(o, Date.now());
+  feeEl.textContent = status.text;
+  feeEl.classList.toggle('over', status.over);
 }
 function tick(){
   if(active.length === 0) return;
@@ -799,7 +798,7 @@ function renderDetailTable(){
     <div class="export-table-scroll">
       <table class="export-table">
         <thead><tr>
-          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>起價</th><th>差額</th>
+          <th>編號</th><th>單號</th><th>日期</th><th>開始</th><th>結束</th><th>超時</th><th>單價</th><th>差額</th>
         </tr></thead>
         <tbody>
           ${list.map((o,i) => `
@@ -820,7 +819,7 @@ function renderDetailTable(){
         </tfoot>
       </table>
     </div>
-    ${list.some(o=>o.excludeBaseFromTotal) ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">— 表示疊單共用起價，已計入同組主單，不重複列入總計</p>' : ''}
+    ${list.some(o=>o.excludeBaseFromTotal) ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">— 表示疊單共用單價，已計入同組主單，不重複列入總計</p>' : ''}
   `;
 }
 $('exportPreviewWrap').addEventListener('change', e=>{
@@ -844,7 +843,7 @@ $('rangeEnd').addEventListener('change', renderDetailTable);
 function buildExportRows(list){
   const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
   const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
-  const header = ['編號','單號','日期','開始','結束','超時','起價','差額'];
+  const header = ['編號','單號','日期','開始','結束','超時','單價','差額'];
   const rows = list.map((o,i) => [
     i+1, o.orderNo || '', fmtDateOnly(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee
   ]);
