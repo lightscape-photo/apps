@@ -338,7 +338,6 @@
 </div>
 
 <script>
-const settings = { freeMinutes: 11, ratePerMinute: 4.1 };
 const KEY_ACTIVE = 'meter_active';
 const KEY_ORDERS = 'meter_orders';
 
@@ -382,13 +381,31 @@ function plainNum(n){
   const r = Math.round(n*10)/10;
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
+function calculateDeliverySubsidy(basePrice, actualMinutes){
+  // 1. 根據專法計算出這趟行程的「法定保障總額」 (每分鐘4.1元與45元擇高)
+  const timeGuarantee = actualMinutes * 4.1;
+  const legalGuarantee = Math.max(45, timeGuarantee);
+
+  // 2. 計算應補差額 (保障總額 扣掉 初始起價)
+  let subsidy = legalGuarantee - basePrice;
+
+  // 3. 防呆機制：如果起價很高，差額為負數時，畫面顯示 0 元 (不補也不扣)
+  if(subsidy < 0){
+    subsidy = 0;
+  }
+
+  // 回傳四捨五入後的整數金額
+  return Math.round(subsidy);
+}
 function calcFee(startTs, endTs, basePrice){
   const price = basePrice || 0;
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
-  const thresholdMin = Math.max(0, Math.ceil(price / settings.ratePerMinute));
-  const rawFee = elapsedMinCeil * settings.ratePerMinute - price;
-  const extraFee = Math.round(Math.max(0, rawFee));
+  const extraFee = calculateDeliverySubsidy(price, elapsedMinCeil);
+  let thresholdMin = 0;
+  while(calculateDeliverySubsidy(price, thresholdMin) <= 0 && thresholdMin < 100000){
+    thresholdMin++;
+  }
   const extraMin = Math.max(0, elapsedMinCeil - thresholdMin);
   return { elapsedMinCeil, thresholdMin, extraMin, extraFee };
 }
