@@ -382,12 +382,15 @@ function plainNum(n){
   const r = Math.round(n*10)/10;
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
-function calcFee(startTs, endTs){
+function calcFee(startTs, endTs, basePrice){
+  const price = basePrice || 0;
   const elapsedMs = endTs - startTs;
   const elapsedMinCeil = Math.max(0, Math.ceil(elapsedMs/60000));
-  const extraMin = Math.max(0, elapsedMinCeil - settings.freeMinutes);
-  const extraFee = Math.round(extraMin * settings.ratePerMinute);
-  return { elapsedMinCeil, extraMin, extraFee };
+  const thresholdMin = Math.max(0, Math.ceil(price / settings.ratePerMinute));
+  const rawFee = elapsedMinCeil * settings.ratePerMinute - price;
+  const extraFee = Math.round(Math.max(0, rawFee));
+  const extraMin = Math.max(0, elapsedMinCeil - thresholdMin);
+  return { elapsedMinCeil, thresholdMin, extraMin, extraFee };
 }
 
 function init(){
@@ -440,6 +443,7 @@ function renderActive(){
     return;
   }
   const sorted = [...active].sort((a,b)=>a.startTs-b.startTs);
+  const now0 = Date.now();
   list.innerHTML = sorted.map(o => {
     const isPrimary = o.linkRole === 'primary';
     const isSecondary = o.linkRole === 'secondary';
@@ -453,6 +457,10 @@ function renderActive(){
            <label>起價</label>
            <div class="base-input"><span>NT$</span><input type="number" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="0" min="0"></div>
          </div>`;
+    const initFee = calcFee(o.startTs, now0, o.basePrice);
+    const initFeeText = initFee.extraFee > 0
+      ? `已超時 ${initFee.extraMin} 分鐘，+${money(initFee.extraFee)}`
+      : `跑超過 ${initFee.thresholdMin} 分鐘才開始補差額`;
     return `
     <div class="swipe-card-wrap" data-swipe-card="${o.id}">
       <div class="order-card" data-order-id="${o.id}">
@@ -461,7 +469,7 @@ function renderActive(){
         </div>
         <div class="order-status-row">
           <span class="order-timer" data-timer="${o.id}">00:00</span>
-          <span class="order-fee" data-fee="${o.id}">尚未超時</span>
+          <span class="order-fee${initFee.extraFee > 0 ? ' over' : ''}" data-fee="${o.id}">${initFeeText}</span>
         </div>
         <div class="order-base-row">
           <label>單號</label>
@@ -522,9 +530,11 @@ $('activeList').addEventListener('input', e=>{
           sec.basePrice = o.basePrice;
           const disp = document.querySelector(`[data-locked-display="${sec.id}"]`);
           if(disp) disp.textContent = money(sec.basePrice);
+          updateFeeDisplay(sec);
         });
       }
       saveJSON(KEY_ACTIVE, active);
+      updateFeeDisplay(o);
     }
   }
   if(ordId){
@@ -630,7 +640,7 @@ function completeOrder(id){
   if(idx === -1) return;
   const o = active[idx];
   const endTs = Date.now();
-  const { elapsedMinCeil, extraMin, extraFee } = calcFee(o.startTs, endTs);
+  const { elapsedMinCeil, extraMin, extraFee } = calcFee(o.startTs, endTs, o.basePrice);
   const record = {
     id: genId(),
     orderNo: o.orderNo || '',
@@ -656,23 +666,25 @@ function cancelOrder(id){
   renderActive();
 }
 
+function updateFeeDisplay(o){
+  const feeEl = document.querySelector(`[data-fee="${o.id}"]`);
+  if(!feeEl) return;
+  const { thresholdMin, extraMin, extraFee } = calcFee(o.startTs, Date.now(), o.basePrice);
+  if(extraFee > 0){
+    feeEl.textContent = `已超時 ${extraMin} 分鐘，+${money(extraFee)}`;
+    feeEl.classList.add('over');
+  }else{
+    feeEl.textContent = `跑超過 ${thresholdMin} 分鐘才開始補差額`;
+    feeEl.classList.remove('over');
+  }
+}
 function tick(){
   if(active.length === 0) return;
   const now = Date.now();
   active.forEach(o=>{
     const timerEl = document.querySelector(`[data-timer="${o.id}"]`);
-    const feeEl = document.querySelector(`[data-fee="${o.id}"]`);
     if(timerEl) timerEl.textContent = fmtMMSS(now - o.startTs);
-    if(feeEl){
-      const { extraMin, extraFee } = calcFee(o.startTs, now);
-      if(extraFee > 0){
-        feeEl.textContent = `已超時 ${extraMin} 分鐘，+${money(extraFee)}`;
-        feeEl.classList.add('over');
-      }else{
-        feeEl.textContent = `尚未超時`;
-        feeEl.classList.remove('over');
-      }
-    }
+    updateFeeDisplay(o);
   });
 }
 
