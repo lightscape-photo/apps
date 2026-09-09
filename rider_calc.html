@@ -627,10 +627,10 @@ function initCardSwipeCancel(){
         card.setPointerCapture(e.pointerId);
       }
       if(cancelled) return;
-      currentX = Math.max(0, dx);
+      currentX = Math.min(0, dx);
       card.style.transform = `translateX(${currentX}px)`;
       const maxDist = wrap.clientWidth * 0.1;
-      const progress = Math.min(1, currentX / maxDist);
+      const progress = Math.min(1, Math.abs(currentX) / maxDist);
       card.style.opacity = String(1 - progress * 0.6);
     }
     function onPointerUp(){
@@ -639,8 +639,8 @@ function initCardSwipeCancel(){
       if(cancelled) return;
       const maxDist = wrap.clientWidth * 0.1;
       card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-      if(currentX >= maxDist){
-        card.style.transform = `translateX(${wrap.clientWidth}px)`;
+      if(Math.abs(currentX) >= maxDist){
+        card.style.transform = `translateX(-${wrap.clientWidth}px)`;
         card.style.opacity = '0';
         setTimeout(()=> cancelOrder(id), 180);
       }else{
