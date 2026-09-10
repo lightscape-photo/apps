@@ -342,9 +342,14 @@
     </div>
     <div id="exportPreviewWrap"></div>
     <div class="history-actions">
-      <button class="export-btn" id="exportCsvBtn">下載 CSV</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="export-btn" id="exportCsvBtn">匯出 CSV</button>
+        <button class="export-btn" id="importCsvBtn">匯入 CSV</button>
+        <input type="file" id="importCsvInput" accept=".csv" style="display:none;">
+      </div>
       <button class="clear-all" id="clearAllBtn" style="display:none;">清空所有紀錄</button>
     </div>
+    <p id="importStatus" style="font-size:12px;color:var(--muted);margin-top:8px;"></p>
   </div>
 
   <div id="tabSettings" class="tab-panel">
@@ -371,7 +376,7 @@
 <div class="overlay" id="confirmClearOverlay">
   <div class="settings-panel" style="max-width:340px;text-align:center;">
     <h3 style="margin-bottom:10px;">清空所有紀錄？</h3>
-    <p class="hint" style="margin-bottom:18px;">這會刪除全部歷史紀錄，且無法復原。建議先用「下載 CSV」備份。</p>
+    <p class="hint" style="margin-bottom:18px;">這會刪除全部歷史紀錄，且無法復原。建議先用「匯出 CSV」備份。</p>
     <div class="settings-actions">
       <button class="cancel" id="confirmClearCancel">取消</button>
       <button class="confirm" id="confirmClearOk" style="background:var(--red);color:var(--on-red);">確定清空</button>
@@ -899,6 +904,13 @@ function fmtDateOnly(ts){
   const dd = String(d.getDate()).padStart(2,'0');
   return `${mm}/${dd}`;
 }
+function fmtDateFull(ts){
+  const d = new Date(ts);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}/${mm}/${dd}`;
+}
 function renderDetailTable(){
   const wrap = $('exportPreviewWrap');
   const list = getExportOrders();
@@ -1034,11 +1046,11 @@ $('rangeEnd').addEventListener('change', renderDetailTable);
 function buildExportRows(list){
   const baseSum = list.reduce((s,o)=> s + (o.excludeBaseFromTotal ? 0 : o.basePrice), 0);
   const feeSum = list.reduce((s,o)=>s+o.extraFee,0);
-  const header = ['編號','單號','日期','開始','結束','超時','單價','差額'];
+  const header = ['編號','單號','日期','開始','結束','超時','單價','差額','疊單共用'];
   const rows = list.map((o,i) => [
-    i+1, o.orderNo || '', fmtDateOnly(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee
+    i+1, o.orderNo || '', fmtDateFull(o.startTs), fmtHHMM(o.startTs), fmtHHMM(o.endTs), o.extraMin, o.basePrice, o.extraFee, o.excludeBaseFromTotal ? '是' : ''
   ]);
-  const totalRow = ['','總計','','','','', baseSum.toFixed(1), feeSum.toFixed(1)];
+  const totalRow = ['','總計','','','','', baseSum.toFixed(1), feeSum.toFixed(1), ''];
   return { header, rows, totalRow, baseSum, feeSum };
 }
 function csvEscape(v){
@@ -1061,6 +1073,101 @@ $('exportCsvBtn').addEventListener('click', ()=>{
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+});
+
+function showImportStatus(msg){
+  const el = $('importStatus');
+  el.textContent = msg;
+  setTimeout(()=>{ if(el.textContent === msg) el.textContent = ''; }, 5000);
+}
+function parseCsvLine(line){
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for(let i = 0; i < line.length; i++){
+    const ch = line[i];
+    if(inQuotes){
+      if(ch === '"'){
+        if(line[i+1] === '"'){ cur += '"'; i++; }
+        else { inQuotes = false; }
+      }else{
+        cur += ch;
+      }
+    }else{
+      if(ch === '"'){ inQuotes = true; }
+      else if(ch === ','){ result.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+function parseCsvText(text){
+  const clean = text.replace(/^\uFEFF/, '');
+  const lines = clean.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+  return lines.map(parseCsvLine);
+}
+$('importCsvBtn').addEventListener('click', ()=> $('importCsvInput').click());
+$('importCsvInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const rows = parseCsvText(reader.result);
+      if(rows.length < 2){ showImportStatus('CSV內容是空的'); e.target.value=''; return; }
+      const dataRows = rows.slice(1);
+      const currentYear = new Date().getFullYear();
+      const imported = [];
+      dataRows.forEach(r=>{
+        if(r.length < 8) return;
+        const orderNo = r[1];
+        if(orderNo === '總計') return;
+        const dateStr = r[2];
+        const startStr = r[3];
+        const endStr = r[4];
+        const basePrice = parseFloat(r[6]) || 0;
+        const excludeBaseFromTotal = r[8] === '是' || r[8] === '1' || r[8] === 'Y';
+        const dateParts = dateStr.split('/').map(n => parseInt(n));
+        let yyyy, mm, dd;
+        if(dateParts.length === 3){
+          [yyyy, mm, dd] = dateParts;
+        }else if(dateParts.length === 2){
+          [mm, dd] = dateParts;
+          yyyy = currentYear;
+        }else{
+          return;
+        }
+        if(!yyyy || !mm || !dd) return;
+        const [sh, sm] = startStr.split(':').map(n => parseInt(n));
+        const [eh, em] = endStr.split(':').map(n => parseInt(n));
+        const startTs = new Date(yyyy, mm - 1, dd, sh || 0, sm || 0, 0).getTime();
+        let endTs = new Date(yyyy, mm - 1, dd, eh || 0, em || 0, 0).getTime();
+        if(endTs <= startTs) endTs += 24*60*60*1000;
+        const { elapsedMinCeil, extraMin, extraFee } = calcFee(startTs, endTs, basePrice);
+        imported.push({
+          id: genId(),
+          orderNo: orderNo || '',
+          basePrice,
+          excludeBaseFromTotal,
+          startTs, endTs,
+          elapsedMinCeil, extraMin, extraFee,
+          total: basePrice + extraFee
+        });
+      });
+      if(imported.length === 0){ showImportStatus('沒有讀到可匯入的紀錄，請確認CSV格式'); e.target.value=''; return; }
+      orders = orders.concat(imported);
+      orders.sort((a,b) => b.startTs - a.startTs);
+      saveJSON(KEY_ORDERS, orders);
+      computeTodaySummary();
+      renderDetailTable();
+      showImportStatus(`已匯入 ${imported.length} 筆紀錄`);
+    }catch(err){
+      showImportStatus('匯入失敗，請確認CSV格式是否正確');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
 });
 
 init();
