@@ -111,14 +111,32 @@
     position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;
     padding:12px 14px;touch-action:pan-y;
   }
-  .ordno-row{margin-bottom:8px;}
+  .ordno-price-row{display:flex;gap:8px;margin-bottom:10px;}
   .ordno-input{
-    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
-    padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;
+    flex:1.8;min-width:0;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+    padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;
     text-align:center;letter-spacing:1px;color:var(--text);
   }
   .ordno-input:focus{outline:none;border-color:var(--amber);}
-  .ordno-input::placeholder{font-weight:400;font-size:14px;letter-spacing:normal;}
+  .ordno-input::placeholder{font-weight:400;font-size:13px;letter-spacing:normal;}
+  .price-input-wrap{
+    flex:0.8;min-width:0;display:flex;align-items:center;gap:2px;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+    padding:8px 10px;
+  }
+  .price-input-wrap span{font-size:14px;color:var(--muted);}
+  .price-input-wrap.locked-price{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;}
+  .price-input{
+    flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;
+    color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;
+    text-align:right;-moz-appearance:textfield;appearance:textfield;
+  }
+  .price-input::-webkit-outer-spin-button,.price-input::-webkit-inner-spin-button{
+    -webkit-appearance:none;margin:0;
+  }
+  .price-input::placeholder{font-weight:400;font-size:13px;letter-spacing:normal;}
+  .price-input:focus{outline:none;}
+  .price-input-wrap:focus-within{border-color:var(--amber);}
   .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .order-start{font-size:12px;color:var(--muted);}
   .order-start b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
@@ -133,19 +151,6 @@
   }
   .order-fee{font-size:11px;color:var(--muted);text-align:right;}
   .order-fee.over{color:var(--amber);}
-
-  .order-base-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .order-base-row label{font-size:12px;color:var(--muted);}
-  .base-input{
-    display:flex;align-items:center;gap:4px;background:var(--panel-2);
-    border:1px solid var(--border);border-radius:8px;padding:4px 8px;
-  }
-  .base-input span{font-size:13px;color:var(--muted);}
-  .base-input input[type=number],.base-input input[type=text]{
-    width:70px;background:transparent;border:none;outline:none;color:var(--text);
-    font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:right;
-  }
-  .locked-price{padding:4px 8px;font-size:14px;}
 
   .complete-btn{
     width:100%;padding:11px;border-radius:12px;border:none;background:var(--green);
@@ -533,27 +538,22 @@ function renderActive(){
     list.innerHTML = '<div class="empty">目前沒有進行中的訂單</div>';
     return;
   }
-  const sorted = [...active].sort((a,b)=>a.startTs-b.startTs);
+  const sorted = [...active].sort((a,b)=>b.startTs-a.startTs);
   const now0 = Date.now();
   list.innerHTML = sorted.map(o => {
     const isPrimary = o.linkRole === 'primary';
     const isSecondary = o.linkRole === 'secondary';
     const badge = isPrimary ? '<span class="link-badge">疊單 A</span>' : isSecondary ? '<span class="link-badge">疊單 B</span>' : '';
-    const priceRow = isSecondary
-      ? `<div class="order-base-row">
-           <label>單價（與A單共用）</label>
-           <div class="locked-price" data-locked-display="${o.id}">${money(o.basePrice)}</div>
-         </div>`
-      : `<div class="order-base-row">
-           <label>單價</label>
-           <div class="base-input"><span>NT$</span><input type="number" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="0" min="0"></div>
-         </div>`;
+    const priceField = isSecondary
+      ? `<div class="price-input-wrap locked-price"><span>$</span><span data-locked-display="${o.id}">${plainNum(o.basePrice)}</span></div>`
+      : `<div class="price-input-wrap"><span>$</span><input type="number" class="price-input" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="單價" min="0"></div>`;
     const feeStatus = getFeeStatus(o, now0);
     return `
     <div class="swipe-card-wrap" data-swipe-card="${o.id}">
       <div class="order-card" data-order-id="${o.id}">
-        <div class="ordno-row">
-          <input type="text" class="ordno-input" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="輸入單號">
+        <div class="ordno-price-row">
+          <input type="text" class="ordno-input" data-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="單號">
+          ${priceField}
         </div>
         <div class="order-head">
           <span class="order-start">開始 <b>${fmtHHMM(o.startTs)}</b>${badge}</span>
@@ -562,7 +562,6 @@ function renderActive(){
           <span class="order-timer" data-timer="${o.id}">00:00</span>
           <span class="order-fee${feeStatus.over ? ' over' : ''}" data-fee="${o.id}">${feeStatus.text}</span>
         </div>
-        ${priceRow}
         <button class="complete-btn" data-complete="${o.id}">完成</button>
       </div>
     </div>
@@ -616,7 +615,7 @@ $('activeList').addEventListener('input', e=>{
         active.filter(a => a.linkGroupId === o.linkGroupId && a.linkRole === 'secondary').forEach(sec=>{
           sec.basePrice = o.basePrice;
           const disp = document.querySelector(`[data-locked-display="${sec.id}"]`);
-          if(disp) disp.textContent = money(sec.basePrice);
+          if(disp) disp.textContent = plainNum(sec.basePrice);
           updateFeeDisplay(sec);
         });
       }
