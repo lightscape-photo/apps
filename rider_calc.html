@@ -613,7 +613,7 @@ function renderActive(){
     const newEls = pendingNewIds
       .map(id => list.querySelector(`.swipe-card-wrap[data-swipe-card="${id}"]`))
       .filter(Boolean);
-    const pushDelay = animating.length ? 150 : 0;
+    const pushDelay = animating.length ? 70 : 0;
     newEls.forEach(el=>{
       el.style.transition = 'none';
       el.style.transform = 'scale(0.92)';
