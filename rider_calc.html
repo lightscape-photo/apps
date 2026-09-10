@@ -157,7 +157,7 @@
     color:var(--on-green);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;
   }
   .complete-btn:active{transform:scale(0.98);}
-  .complete-btn.armed{color:var(--on-green);}
+  .complete-btn.armed{background:var(--red);color:var(--on-red);}
 
   .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
   .summary .card{
@@ -688,7 +688,7 @@ function handleCompleteClick(btn){
     return;
   }
   armedIds.add(id);
-  btn.textContent = '再點一次確認';
+  btn.textContent = '確認完成';
   btn.classList.add('armed');
 }
 
