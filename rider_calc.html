@@ -509,18 +509,24 @@ function init(){
   setInterval(tick, 1000);
 }
 
+let pendingNewIds = [];
 $('newOrderBtn').addEventListener('click', ()=>{
-  active.push({ id: genId(), basePrice: 0, startTs: Date.now() });
+  const id = genId();
+  active.push({ id, basePrice: 0, startTs: Date.now() });
   saveJSON(KEY_ACTIVE, active);
+  pendingNewIds = [id];
   renderActive();
 });
 
 $('newLinkedBtn').addEventListener('click', ()=>{
   const groupId = genId();
   const now = Date.now();
-  active.push({ id: genId(), basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'primary' });
-  active.push({ id: genId(), basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'secondary' });
+  const idA = genId();
+  const idB = genId();
+  active.push({ id: idA, basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'primary' });
+  active.push({ id: idB, basePrice: 0, startTs: now, linkGroupId: groupId, linkRole: 'secondary' });
   saveJSON(KEY_ACTIVE, active);
+  pendingNewIds = [idA, idB];
   renderActive();
 });
 
@@ -590,7 +596,7 @@ function renderActive(){
     void list.offsetHeight;
     requestAnimationFrame(()=>{
       animating.forEach(({el})=>{
-        el.style.transition = 'transform 0.22s ease';
+        el.style.transition = 'transform 0.15s ease';
         el.style.transform = 'translateY(0)';
       });
       setTimeout(()=>{
@@ -599,8 +605,38 @@ function renderActive(){
           el.style.transform = '';
           el.style.zIndex = '';
         });
-      }, 240);
+      }, 170);
     });
+  }
+
+  if(pendingNewIds.length){
+    const newEls = pendingNewIds
+      .map(id => list.querySelector(`.swipe-card-wrap[data-swipe-card="${id}"]`))
+      .filter(Boolean);
+    const pushDelay = animating.length ? 150 : 0;
+    newEls.forEach(el=>{
+      el.style.transition = 'none';
+      el.style.transform = 'scale(0.92)';
+      el.style.opacity = '0';
+    });
+    if(newEls.length){
+      void list.offsetHeight;
+      setTimeout(()=>{
+        newEls.forEach(el=>{
+          el.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
+          el.style.transform = 'scale(1)';
+          el.style.opacity = '1';
+        });
+        setTimeout(()=>{
+          newEls.forEach(el=>{
+            el.style.transition = '';
+            el.style.transform = '';
+            el.style.opacity = '';
+          });
+        }, 170);
+      }, pushDelay);
+    }
+    pendingNewIds = [];
   }
 }
 
@@ -703,7 +739,7 @@ function initCardSwipeCancel(){
       if(cancelled) return;
       currentX = Math.min(0, dx);
       card.style.transform = `translateX(${currentX}px)`;
-      const maxDist = wrap.clientWidth * 0.2;
+      const maxDist = wrap.clientWidth * 0.15;
       const progress = Math.min(1, Math.abs(currentX) / maxDist);
       card.style.opacity = String(1 - progress * 0.6);
     }
@@ -711,7 +747,7 @@ function initCardSwipeCancel(){
       if(!dragging) return;
       dragging = false;
       if(cancelled) return;
-      const maxDist = wrap.clientWidth * 0.2;
+      const maxDist = wrap.clientWidth * 0.15;
       card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
       if(Math.abs(currentX) >= maxDist){
         card.style.transform = `translateX(-${wrap.clientWidth}px)`;
