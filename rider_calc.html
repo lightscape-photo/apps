@@ -61,7 +61,7 @@
     --on-amber:#0A0E17;
     --on-red:#0A0E17;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
   body{
     background:var(--bg);
@@ -85,6 +85,21 @@
     cursor:pointer;font-family:inherit;
   }
   .new-order-btn:active{background:var(--amber-dim);}
+
+  .trash-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .trash-info{min-width:0;flex:1;}
+  .trash-ordno{font-size:15px;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .trash-meta{font-size:12px;color:var(--muted);margin-top:4px;}
+  .trash-restore-btn{
+    flex:0 0 auto;background:var(--green);color:var(--on-green);border:none;
+    border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit;
+  }
+  .trash-restore-btn:active{transform:scale(0.96);}
   .new-order-row{display:flex;gap:10px;margin-bottom:18px;}
   .linked-btn{
     flex:1;padding:16px 8px;border-radius:16px;border:2px dashed var(--green);
@@ -235,6 +250,7 @@
   }
   .export-table th{color:var(--muted);font-family:'IBM Plex Sans TC',sans-serif;font-weight:600;font-size:10px;text-align:center;}
   .export-table tbody tr:last-child td{border-bottom:none;}
+  .row-id-cell{-webkit-user-select:none;user-select:none;cursor:pointer;}
   .export-table tfoot td{border-top:1px solid var(--border);border-bottom:none;color:var(--amber);font-weight:600;padding-top:10px;}
   .export-table-scroll{overflow-x:hidden;}
   .detail-edit-input{
@@ -293,6 +309,7 @@
     <div class="tab-group">
       <button class="tab-btn active" data-tab="main">主頁</button>
       <button class="tab-btn" data-tab="detail">明細</button>
+      <button class="tab-btn" data-tab="trash">垃圾桶</button>
       <button class="tab-btn" data-tab="settings">設定</button>
     </div>
     <span class="brand-label"><span class="brand-uber">Uber</span> <span class="brand-eats">Eats</span></span>
@@ -352,6 +369,16 @@
     <p id="importStatus" style="font-size:12px;color:var(--muted);margin-top:8px;"></p>
   </div>
 
+  <div id="tabTrash" class="tab-panel">
+    <div class="active-header">
+      <h2>垃圾桶</h2>
+    </div>
+    <div id="trashList"><div class="empty">垃圾桶是空的</div></div>
+    <div class="history-actions" style="justify-content:flex-end;">
+      <button class="clear-all" id="clearTrashBtn" style="display:none;">清空垃圾桶</button>
+    </div>
+  </div>
+
   <div id="tabSettings" class="tab-panel">
     <div class="active-header">
       <h2>主題色</h2>
@@ -380,6 +407,28 @@
     <div class="settings-actions">
       <button class="cancel" id="confirmClearCancel">取消</button>
       <button class="confirm" id="confirmClearOk" style="background:var(--red);color:var(--on-red);">確定清空</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmClearTrashOverlay">
+  <div class="settings-panel" style="max-width:340px;text-align:center;">
+    <h3 style="margin-bottom:10px;">清空垃圾桶？</h3>
+    <p class="hint" style="margin-bottom:18px;">垃圾桶裡的訂單會被永久刪除，無法再還原。</p>
+    <div class="settings-actions">
+      <button class="cancel" id="confirmClearTrashCancel">取消</button>
+      <button class="confirm" id="confirmClearTrashOk" style="background:var(--red);color:var(--on-red);">確定清空</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmDeleteRowOverlay">
+  <div class="settings-panel" style="max-width:340px;text-align:center;">
+    <h3 style="margin-bottom:10px;">刪除這筆紀錄？</h3>
+    <p class="hint" id="deleteRowInfo" style="margin-bottom:18px;"></p>
+    <div class="settings-actions">
+      <button class="cancel" id="confirmDeleteRowCancel">取消</button>
+      <button class="confirm" id="confirmDeleteRowOk" style="background:var(--red);color:var(--on-red);">確定刪除</button>
     </div>
   </div>
 </div>
@@ -497,6 +546,7 @@ function getFeeStatus(o, now){
 function init(){
   active = loadJSON(KEY_ACTIVE, []);
   orders = loadJSON(KEY_ORDERS, []);
+  trashItems = loadJSON(KEY_TRASH, []);
   let migrated = false;
   orders.forEach(o=>{
     const rounded = Math.round(o.extraFee);
@@ -511,6 +561,7 @@ function init(){
   renderActive();
   computeTodaySummary();
   renderDetailTable();
+  renderTrash();
   setInterval(tick, 1000);
 }
 
@@ -796,11 +847,68 @@ function completeOrder(id){
   renderDetailTable();
 }
 
+const KEY_TRASH = 'meter_trash';
+let trashItems = [];
+
 function cancelOrder(id){
-  active = active.filter(a=>a.id!==id);
+  const idx = active.findIndex(a=>a.id===id);
+  if(idx === -1) return;
+  const item = active[idx];
+  item.deletedAt = Date.now();
+  trashItems.unshift(item);
+  active.splice(idx,1);
   saveJSON(KEY_ACTIVE, active);
+  saveJSON(KEY_TRASH, trashItems);
   renderActive();
+  renderTrash();
 }
+
+function renderTrash(){
+  const el = $('trashList');
+  $('clearTrashBtn').style.display = trashItems.length === 0 ? 'none' : 'block';
+  if(trashItems.length === 0){
+    el.innerHTML = '<div class="empty">垃圾桶是空的</div>';
+    return;
+  }
+  el.innerHTML = trashItems.map(item=>{
+    const badge = item.linkRole === 'primary' ? '<span class="link-badge">疊單 A</span>' : item.linkRole === 'secondary' ? '<span class="link-badge">疊單 B</span>' : '';
+    return `
+    <div class="trash-row" data-trash-id="${item.id}">
+      <div class="trash-info">
+        <div class="trash-ordno">${item.orderNo ? item.orderNo : '（未填單號）'}${badge}</div>
+        <div class="trash-meta">單價 NT$${item.basePrice || 0} · 開始 ${fmtHHMM(item.startTs)}</div>
+      </div>
+      <button class="trash-restore-btn" data-trash-restore="${item.id}">還原</button>
+    </div>`;
+  }).join('');
+}
+$('trashList').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-trash-restore]');
+  if(!btn) return;
+  const id = btn.getAttribute('data-trash-restore');
+  const idx = trashItems.findIndex(t=>t.id===id);
+  if(idx === -1) return;
+  const item = trashItems[idx];
+  delete item.deletedAt;
+  active.push(item);
+  trashItems.splice(idx,1);
+  saveJSON(KEY_ACTIVE, active);
+  saveJSON(KEY_TRASH, trashItems);
+  renderActive();
+  renderTrash();
+});
+$('clearTrashBtn').addEventListener('click', ()=>{
+  $('confirmClearTrashOverlay').classList.add('show');
+});
+$('confirmClearTrashCancel').addEventListener('click', ()=>{
+  $('confirmClearTrashOverlay').classList.remove('show');
+});
+$('confirmClearTrashOk').addEventListener('click', ()=>{
+  trashItems = [];
+  saveJSON(KEY_TRASH, trashItems);
+  renderTrash();
+  $('confirmClearTrashOverlay').classList.remove('show');
+});
 
 function updateFeeDisplay(o){
   const feeEl = document.querySelector(`[data-fee="${o.id}"]`);
@@ -841,7 +949,7 @@ $('confirmClearOk').addEventListener('click', ()=>{
   $('confirmClearOverlay').classList.remove('show');
 });
 
-const TAB_ID_MAP = { main: 'tabMain', detail: 'tabDetail', settings: 'tabSettings' };
+const TAB_ID_MAP = { main: 'tabMain', detail: 'tabDetail', trash: 'tabTrash', settings: 'tabSettings' };
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -850,6 +958,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     $(TAB_ID_MAP[tab]).classList.add('active');
     if(tab === 'detail') renderDetailTable();
+    if(tab === 'trash') renderTrash();
   });
 });
 
@@ -930,7 +1039,7 @@ function renderDetailTable(){
         <tbody>
           ${list.map((o,i) => `
             <tr>
-              <td>${i+1}</td>
+              <td class="row-id-cell" data-row-id="${o.id}">${i+1}</td>
               <td><input type="text" class="detail-edit-input ordno-edit-input" data-edit-ordno="${o.id}" value="${o.orderNo ? o.orderNo.replace(/"/g,'&quot;') : ''}" placeholder="-"></td>
               <td>${fmtDateOnly(o.startTs)}</td>
               <td><input type="text" inputmode="numeric" maxlength="5" class="detail-edit-input time-edit-input" data-edit-start="${o.id}" value="${fmtHHMM(o.startTs)}" placeholder="HH:MM"></td>
@@ -950,6 +1059,54 @@ function renderDetailTable(){
     ${list.some(o=>o.excludeBaseFromTotal) ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">— 表示疊單共用單價，已計入同組主單，不重複列入總計</p>' : ''}
   `;
 }
+let longPressTimer = null;
+let longPressStartX = 0, longPressStartY = 0;
+let pendingDeleteRowId = null;
+
+function cancelLongPress(){
+  if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+}
+$('exportPreviewWrap').addEventListener('pointerdown', e=>{
+  const cell = e.target.closest('.row-id-cell');
+  if(!cell) return;
+  const id = cell.getAttribute('data-row-id');
+  longPressStartX = e.clientX;
+  longPressStartY = e.clientY;
+  longPressTimer = setTimeout(()=>{
+    longPressTimer = null;
+    openDeleteRowConfirm(id);
+  }, 600);
+});
+$('exportPreviewWrap').addEventListener('pointerup', cancelLongPress);
+$('exportPreviewWrap').addEventListener('pointercancel', cancelLongPress);
+$('exportPreviewWrap').addEventListener('pointermove', e=>{
+  if(!longPressTimer) return;
+  const dx = Math.abs(e.clientX - longPressStartX);
+  const dy = Math.abs(e.clientY - longPressStartY);
+  if(dx > 10 || dy > 10) cancelLongPress();
+});
+function openDeleteRowConfirm(id){
+  const order = orders.find(o=>o.id===id);
+  if(!order) return;
+  pendingDeleteRowId = id;
+  $('deleteRowInfo').textContent = `單號：${order.orderNo || '未填寫'}　${fmtDateOnly(order.startTs)} ${fmtHHMM(order.startTs)}~${fmtHHMM(order.endTs)}`;
+  $('confirmDeleteRowOverlay').classList.add('show');
+}
+$('confirmDeleteRowCancel').addEventListener('click', ()=>{
+  pendingDeleteRowId = null;
+  $('confirmDeleteRowOverlay').classList.remove('show');
+});
+$('confirmDeleteRowOk').addEventListener('click', ()=>{
+  if(pendingDeleteRowId){
+    orders = orders.filter(o=>o.id!==pendingDeleteRowId);
+    saveJSON(KEY_ORDERS, orders);
+    computeTodaySummary();
+    renderDetailTable();
+  }
+  pendingDeleteRowId = null;
+  $('confirmDeleteRowOverlay').classList.remove('show');
+});
+
 $('exportPreviewWrap').addEventListener('input', e=>{
   const ordnoId = e.target.getAttribute('data-edit-ordno');
   if(!ordnoId) return;
