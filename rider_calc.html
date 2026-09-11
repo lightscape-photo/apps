@@ -230,6 +230,20 @@
     font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;text-align:right;
   }
   .settings-actions{display:flex;gap:10px;margin-top:6px;}
+  .quick-price-input-wrap{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--panel-2);border:2px solid var(--border);border-radius:14px;
+    padding:16px 18px;
+  }
+  .quick-price-input-wrap span{font-size:20px;color:var(--muted);font-weight:600;}
+  .quick-price-input-wrap input{
+    flex:1;min-width:0;width:100%;background:transparent;border:none;outline:none;
+    color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:700;
+    text-align:center;-moz-appearance:textfield;appearance:textfield;
+  }
+  .quick-price-input-wrap input::-webkit-outer-spin-button,
+  .quick-price-input-wrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .quick-price-input-wrap:focus-within{border-color:var(--amber);}
   .settings-actions button{
     flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
   }
@@ -433,6 +447,20 @@
   </div>
 </div>
 
+<div class="overlay" id="quickPriceOverlay">
+  <div class="settings-panel" style="max-width:320px;text-align:center;">
+    <h3 style="margin-bottom:16px;">輸入單價</h3>
+    <div class="quick-price-input-wrap">
+      <span>NT$</span>
+      <input type="number" id="quickPriceInput" inputmode="numeric" placeholder="0" min="0">
+    </div>
+    <div class="settings-actions" style="margin-top:20px;">
+      <button class="cancel" id="quickPriceSkip">稍後再填</button>
+      <button class="confirm" id="quickPriceOk" style="background:var(--green);color:var(--on-green);">確認</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const KEY_ACTIVE = 'meter_active';
 const KEY_ORDERS = 'meter_orders';
@@ -566,12 +594,14 @@ function init(){
 }
 
 let pendingNewIds = [];
+let pendingPriceIds = [];
 $('newOrderBtn').addEventListener('click', ()=>{
   const id = genId();
   active.push({ id, basePrice: 0, startTs: Date.now() });
   saveJSON(KEY_ACTIVE, active);
   pendingNewIds = [id];
   renderActive();
+  openQuickPrice([id]);
 });
 
 $('newLinkedBtn').addEventListener('click', ()=>{
@@ -584,6 +614,34 @@ $('newLinkedBtn').addEventListener('click', ()=>{
   saveJSON(KEY_ACTIVE, active);
   pendingNewIds = [idA, idB];
   renderActive();
+  openQuickPrice([idA, idB]);
+});
+
+function openQuickPrice(ids){
+  pendingPriceIds = ids;
+  const input = $('quickPriceInput');
+  input.value = '';
+  $('quickPriceOverlay').classList.add('show');
+  requestAnimationFrame(()=> input.focus());
+}
+function closeQuickPrice(){
+  pendingPriceIds = [];
+  $('quickPriceInput').blur();
+  $('quickPriceOverlay').classList.remove('show');
+}
+$('quickPriceSkip').addEventListener('click', closeQuickPrice);
+$('quickPriceOk').addEventListener('click', ()=>{
+  const val = parseFloat($('quickPriceInput').value) || 0;
+  pendingPriceIds.forEach(id=>{
+    const o = active.find(a=>a.id===id);
+    if(o) o.basePrice = val;
+  });
+  saveJSON(KEY_ACTIVE, active);
+  renderActive();
+  closeQuickPrice();
+});
+$('quickPriceInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') $('quickPriceOk').click();
 });
 
 function renderActive(){
@@ -607,8 +665,8 @@ function renderActive(){
     const isSecondary = o.linkRole === 'secondary';
     const badge = isPrimary ? '<span class="link-badge">疊單 A</span>' : isSecondary ? '<span class="link-badge">疊單 B</span>' : '';
     const priceField = isSecondary
-      ? `<div class="price-input-wrap locked-price"><span>$</span><span data-locked-display="${o.id}">${plainNum(o.basePrice)}</span></div>`
-      : `<div class="price-input-wrap"><span>$</span><input type="number" class="price-input" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="單價" min="0"></div>`;
+      ? `<div class="price-input-wrap locked-price"><span>NT$</span><span data-locked-display="${o.id}">${plainNum(o.basePrice)}</span></div>`
+      : `<div class="price-input-wrap"><span>NT$</span><input type="number" class="price-input" data-base="${o.id}" value="${o.basePrice || ''}" placeholder="單價" min="0"></div>`;
     const feeStatus = getFeeStatus(o, now0);
     return `
     <div class="swipe-card-wrap" data-swipe-card="${o.id}">
